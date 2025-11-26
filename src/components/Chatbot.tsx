@@ -3,7 +3,7 @@ import {
     Box,
     CircularProgress,
     Typography,
-    Alert, Avatar, Stack,
+    Alert, Avatar, Stack, Fade,
 } from '@mui/material';
 import { SessionSidebar } from './SessionSidebar';
 import { ChatMessage } from './ChatMessage';
@@ -12,6 +12,7 @@ import { ProgressIndicator } from './ProgressIndicator';
 import { Session, Message, ChatRequest } from '../types/api';
 import { chatService, sessionService, feedbackService } from '../services/api';
 import {SmartToy as BotIcon} from "@mui/icons-material";
+import ChartVisualization, {ChartConfig, ChartType, DataItem, VisualizationInfo} from "./ChartVisualization";
 
 interface ChatbotProps {
     userId: string;
@@ -24,13 +25,14 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [streamingMessage, setStreamingMessage] = useState('');
+    const [visualizationInfo, setVisualizationInfo] = useState<VisualizationInfo>();
     const [isTyping, setIsTyping] = useState(false);
     const [progressStage, setProgressStage] = useState<string>('');
     const [progressMessage, setProgressMessage] = useState<string>('');
     const [autoScroll, setAutoScroll] = useState(true);
     const [scrollTimer, setScrollTimer] = useState<NodeJS.Timeout | null>(null);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
     // 세션 목록 로드
     useEffect(() => {
@@ -311,6 +313,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
 
         setLoading(true);
         setStreamingMessage('');
+        setVisualizationInfo(undefined);
         setError(null);
 
         const request: ChatRequest = {
@@ -330,9 +333,10 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                     setProgressStage(stage);
                     setProgressMessage(message);
                 },
-                (answer) => {
+                (answer, extra_info) => {
                     // final 이벤트에서 받은 answer를 저장하고 타이핑 시작
                     console.log('[Final Answer]', answer);
+                    console.log('[Extra Info]', extra_info);
 
                     // JSON 객체가 문자열로 변환되어 온 경우 무시
                     if (typeof answer === 'string' && answer.trim().startsWith('{')) {
@@ -350,6 +354,30 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                     setIsTyping(true);
                     setProgressStage('');
                     setProgressMessage('');
+
+                    // extra_info 처리 (문자열 또는 객체)
+                    let extra_info_map = null;
+
+                    if (typeof extra_info === 'string' && extra_info.trim().startsWith('{')) {
+                        try {
+                            extra_info_map = JSON.parse(extra_info);
+                        } catch {
+                            // JSON 파싱 실패
+                        }
+                    } else if (typeof extra_info === 'object' && extra_info !== null) {
+                        // 이미 객체인 경우
+                        extra_info_map = extra_info;
+                    }
+
+                    // 시각화 데이터가 있으면 설정
+                    if (extra_info_map?.viz_type && extra_info_map?.chart_config && extra_info_map?.query_result) {
+                        console.log('[Visualization] Setting visualization info:', extra_info_map);
+                        setVisualizationInfo({
+                            viz_type: extra_info_map.viz_type as ChartType,
+                            chart_config: extra_info_map.chart_config as ChartConfig,
+                            query_result: extra_info_map.query_result as DataItem[]
+                        });
+                    }
                 },
                 (err) => {
                     setError('메시지 전송에 실패했습니다.');
@@ -395,8 +423,8 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
             setIsTyping(false);
             setLoading(false);
 
-            // 타이핑 완료 후 세션 히스토리를 다시 로드하여 백엔드에서 생성된 실제 message_id를 받아옴
-            // 동시에 세션 목록도 로드하여 백엔드에서 자동 업데이트된 제목을 가져옴
+            // // 타이핑 완료 후 세션 히스토리를 다시 로드하여 백엔드에서 생성된 실제 message_id를 받아옴
+            // // 동시에 세션 목록도 로드하여 백엔드에서 자동 업데이트된 제목을 가져옴
             if (currentSessionId) {
                 await Promise.all([
                     loadMessages(currentSessionId),
@@ -608,6 +636,14 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                                         isTyping={isTyping}
                                         onTypingComplete={handleTypingComplete}
                                     />
+                                )}
+
+                                {!isTyping && visualizationInfo && visualizationInfo.viz_type !== "none" && (
+                                    <Fade in timeout={500}>
+                                        <Box maxWidth="60%">
+                                            <ChartVisualization {...visualizationInfo} />
+                                        </Box>
+                                    </Fade>
                                 )}
 
                                 {loading && !streamingMessage && !progressStage && (

@@ -20,6 +20,7 @@ interface StreamEvent {
         message: string;
         data: {
             answer?: string;
+            extra_info?: string;
         };
     };
 }
@@ -29,7 +30,7 @@ export const chatService = {
     async streamChat(
         request: ChatRequest,
         onProgress: (stage: string, message: string) => void,
-        onFinalAnswer: (answer: string) => void,
+        onFinalAnswer: (answer: string, extra_info: string) => void,
         onError: (error: Error) => void
     ): Promise<void> {
         try {
@@ -86,6 +87,7 @@ export const chatService = {
                             // Process final event ONLY if it has an answer field
                             if (currentEvent === 'final') {
                                 const answer = eventData.data?.answer;
+                                const extra_info = eventData.data?.extra_info ?? "";
 
                                 // Check if answer exists and is a non-empty string
                                 if (answer && typeof answer === 'string' && answer.trim().length > 0) {
@@ -96,7 +98,7 @@ export const chatService = {
                                     } else {
                                         // Final answer exists and is valid markdown text
                                         console.log('[Final] Valid answer received');
-                                        onFinalAnswer(answer);
+                                        onFinalAnswer(answer, extra_info);
                                     }
                                 } else {
                                     console.log('[Skipping] Final event without valid answer field');
