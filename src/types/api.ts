@@ -33,3 +33,40 @@ export interface UpdateTitleRequest {
 export interface ApiKeysRequest {
     keys: Record<string, string>;
 }
+
+// Tool 관련 타입
+export interface Tool {
+    enabled: boolean;
+    description: string;
+}
+
+export interface ToolsResponse {
+    tools: Record<string, Tool>;
+}
+
+export interface ToolNamesResponse {
+    tool_names: string[];
+}
+
+export interface ToolEnableRequest {
+    enabled: boolean;
+}
+
+export interface ToolBulkEnableRequest {
+    tools: Record<string, boolean>;
+}
+
+// Extra Info (시각화 정보) 관련 타입
+export interface ExtraInfo {
+    viz_type?: 'table' | 'bar_chart' | 'line_chart' | 'pie_chart' | 'none';
+    chart_config?: {
+        x_axis: string;
+        y_axis: string;
+        x_label?: string;
+        y_label?: string;
+    };
+    query_result?: Record<string, string | number>[];
+}
+
+// message_id를 키로 하는 ExtraInfo 맵
+export type ExtraInfoMap = Record<string, ExtraInfo>;

@@ -29,8 +29,10 @@ const stageLabels: Record<string, string> = {
     tool_searching_metadata: '메타정보를 검색 중이에요...',
     tool_generating_sql: 'SQL 쿼리를 생성 중이에요...',
     tool_executing_sql: 'SQL 쿼리를 실행 중이에요...',
-    tool_analyzing_query_results: 'SQL 쿼리 실행 결과를 분석 중이에요...'
-
+    tool_analyzing_query_results: 'SQL 쿼리 실행 결과를 분석 중이에요...',
+    tool_text2seql_retrieval: '메타정보를 검색 중이에요...',
+    tool_text2seql_generation: 'SeQL 쿼리를 생성 중이에요...',
+    tool_text2seql_shovel_pending: 'SeQL 쿼리를 실행 중이에요...',
 };
 
 export const ProgressIndicator: FC<ProgressIndicatorProps> = ({ stage }) => {

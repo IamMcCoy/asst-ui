@@ -23,14 +23,16 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
 import 'highlight.js/styles/github-dark.css';
-import { Message } from '../types/api';
+import { Message, ExtraInfo } from '../types/api';
 import { useTypingEffect } from '../hooks/useTypingEffect';
+import ChartVisualization from './ChartVisualization';
 
 interface ChatMessageProps {
     message: Message;
     onFeedback: (messageId: number, feedbackType: 'thumbs_up' | 'thumbs_down') => void;
     isTyping?: boolean;
     onTypingComplete?: () => void;
+    extraInfo?: ExtraInfo;
 }
 
 // 메시지에서 <think> 블록을 파싱하는 함수
@@ -47,7 +49,7 @@ const parseThinkingBlock = (content: string): { thinking: string | null; respons
     return { thinking: null, response: content };
 };
 
-export const ChatMessage: FC<ChatMessageProps> = ({ message, onFeedback, isTyping = false, onTypingComplete }) => {
+export const ChatMessage: FC<ChatMessageProps> = ({ message, onFeedback, isTyping = false, onTypingComplete, extraInfo }) => {
     const [localFeedback, setLocalFeedback] = useState<'thumbs_up' | 'thumbs_down' | null>(
         message.feedback_type || null
     );
@@ -298,6 +300,19 @@ export const ChatMessage: FC<ChatMessageProps> = ({ message, onFeedback, isTypin
                                 })()}
                             </Typography>
                         </Paper>
+
+                        {/* 시각화 차트 표시 */}
+                        {!isUser && !isTyping && extraInfo && extraInfo.viz_type && extraInfo.viz_type !== 'none' && extraInfo.query_result && (
+                            <Fade in timeout={500}>
+                                <Box mt={2} maxWidth="100%">
+                                    <ChartVisualization
+                                        viz_type={extraInfo.viz_type}
+                                        chart_config={extraInfo.chart_config}
+                                        query_result={extraInfo.query_result}
+                                    />
+                                </Box>
+                            </Fade>
+                        )}
 
                         {!isUser && !isTyping && (
                             <Box display="flex" gap={1} mt={1} ml={1}>

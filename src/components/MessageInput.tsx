@@ -14,6 +14,7 @@ import {
     History as HistoryIcon,
     InfoOutlined as InfoIcon,
 } from '@mui/icons-material';
+import { ToolSelector } from './ToolSelector';
 
 interface MessageInputProps {
     onSendMessage: (
@@ -98,6 +99,7 @@ export const MessageInput: FC<MessageInputProps> = ({
                                 }}
                             />
                         </Tooltip>
+                        <ToolSelector disabled={disabled} />
                     </Box>
 
                     <Box display="flex" gap={1} alignItems="flex-end">

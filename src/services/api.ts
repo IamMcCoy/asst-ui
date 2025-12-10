@@ -5,6 +5,9 @@ import {
     FeedbackRequest,
     UpdateTitleRequest,
     ApiKeysRequest,
+    ToolsResponse,
+    ToolBulkEnableRequest,
+    ExtraInfoMap,
 } from '../types/api';
 
 // 런타임 환경 변수 사용 (window.__ENV__)
@@ -30,7 +33,7 @@ export const chatService = {
     async streamChat(
         request: ChatRequest,
         onProgress: (stage: string, message: string) => void,
-        onFinalAnswer: (answer: string, extra_info: string) => void,
+        onFinalAnswer: (answer: string, extra_info: string, messageId: number | null) => void,
         onError: (error: Error) => void
     ): Promise<void> {
         try {
@@ -88,6 +91,7 @@ export const chatService = {
                             if (currentEvent === 'final') {
                                 const answer = eventData.data?.answer;
                                 const extra_info = eventData.data?.extra_info ?? "";
+                                const messageId = (eventData.data as any)?.message_id ?? null;
 
                                 // Check if answer exists and is a non-empty string
                                 if (answer && typeof answer === 'string' && answer.trim().length > 0) {
@@ -97,8 +101,8 @@ export const chatService = {
                                         console.warn('[Skipping] Final event contains JSON data instead of markdown:', trimmedAnswer.substring(0, 100));
                                     } else {
                                         // Final answer exists and is valid markdown text
-                                        console.log('[Final] Valid answer received');
-                                        onFinalAnswer(answer, extra_info);
+                                        console.log('[Final] Valid answer received, message_id:', messageId);
+                                        onFinalAnswer(answer, extra_info, messageId);
                                     }
                                 } else {
                                     console.log('[Skipping] Final event without valid answer field');
@@ -201,6 +205,34 @@ export const sessionService = {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
     },
+
+    // 세션의 모든 extra_info 조회
+    async getAllExtraInfo(userId: string, sessionId: string): Promise<ExtraInfoMap> {
+        const response = await fetch(
+            `${BASE_URL}/ast/users/${userId}/sessions/${sessionId}/extra-info`
+        );
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                return {}; // extra_info가 없으면 빈 객체 반환
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const responseData = await response.json();
+        const messages = responseData.extra_info || {};
+
+        // 백엔드 응답 구조: { "message_id": { "data": {...}, "saved_at": "..." } }
+        // 프론트엔드 필요 구조: { "message_id": {...} }
+        const result: ExtraInfoMap = {};
+        for (const [messageId, value] of Object.entries(messages)) {
+            if (value && typeof value === 'object' && 'data' in value) {
+                result[messageId] = (value as any).data;
+            }
+        }
+
+        return result;
+    },
 };
 
 export const feedbackService = {
@@ -246,5 +278,71 @@ export const apiKeyService = {
         }
 
         return response.json();
+    },
+};
+
+export const toolService = {
+    // 모든 도구 상태 조회
+    async getAllTools(): Promise<ToolsResponse> {
+        const response = await fetch(`${BASE_URL}/ast/tools`);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return response.json();
+    },
+
+    // 특정 도구 활성화/비활성화
+    async setToolEnabled(toolName: string, enabled: boolean): Promise<void> {
+        const response = await fetch(`${BASE_URL}/ast/tools/${toolName}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ enabled }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    },
+
+    // 여러 도구 일괄 활성화/비활성화
+    async setToolsBulk(tools: Record<string, boolean>): Promise<void> {
+        const request: ToolBulkEnableRequest = { tools };
+        const response = await fetch(`${BASE_URL}/ast/tools`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(request),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    },
+
+    // 모든 도구 활성화
+    async enableAllTools(): Promise<void> {
+        const response = await fetch(`${BASE_URL}/ast/tools/enable-all`, {
+            method: 'POST',
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    },
+
+    // 모든 도구 비활성화
+    async disableAllTools(): Promise<void> {
+        const response = await fetch(`${BASE_URL}/ast/tools/disable-all`, {
+            method: 'POST',
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
     },
 };
