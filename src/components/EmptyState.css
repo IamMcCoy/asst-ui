@@ -1,0 +1,97 @@
+/* EmptyState — sample/styles.css 기반
+ * 새 대화 진입 시 표시: 액센트 마크 + 헤드라인 + 설명 + 4개 suggestion 카드
+ */
+
+.empty {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 6vh 8px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.empty-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent), color-mix(in oklch, var(--accent), #000 40%));
+  display: grid;
+  place-items: center;
+  color: var(--accent-ink);
+  box-shadow: 0 8px 32px -8px var(--accent-soft-2),
+              inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  margin-bottom: 18px;
+}
+.empty-mark svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 1.8;
+}
+
+.empty h1 {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.empty p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 14.5px;
+  max-width: 480px;
+  line-height: 1.55;
+}
+
+.suggest {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  max-width: 600px;
+}
+
+.suggest-card {
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: background 120ms, border-color 120ms;
+  color: inherit;
+}
+.suggest-card:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+.suggest-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.suggest-card .ic {
+  color: var(--accent);
+  margin-top: 2px;
+  flex: none;
+}
+.suggest-card .t {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.suggest-card .d {
+  font-size: 12.5px;
+  color: var(--text-3);
+  line-height: 1.45;
+}

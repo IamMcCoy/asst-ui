@@ -205,9 +205,12 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
             fullWidth
             PaperProps={{
                 sx: {
-                    background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.98) 100%)',
+                    background: (theme) =>
+                        theme.palette.mode === 'dark'
+                            ? 'linear-gradient(135deg, rgba(22, 29, 36, 0.98) 0%, rgba(14, 20, 25, 0.98) 100%)'
+                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(244, 244, 238, 0.98) 100%)',
                     backdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(99, 102, 241, 0.2)',
+                    border: '1px solid rgba(63, 213, 186, 0.2)',
                     borderRadius: '16px',
                 },
             }}
@@ -218,14 +221,14 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     pb: 2,
-                    borderBottom: '1px solid rgba(99, 102, 241, 0.1)',
+                    borderBottom: '1px solid rgba(63, 213, 186, 0.1)',
                 }}
             >
                 <Typography
                     variant="h6"
                     sx={{
                         fontWeight: 700,
-                        background: 'linear-gradient(135deg, #6366F1 0%, #EC4899 100%)',
+                        background: 'linear-gradient(135deg, #3FD5BA 0%, #1A8B7E 100%)',
                         backgroundClip: 'text',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
@@ -239,7 +242,7 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
                     sx={{
                         color: 'text.secondary',
                         '&:hover': {
-                            bgcolor: 'rgba(99, 102, 241, 0.1)',
+                            bgcolor: 'rgba(63, 213, 186, 0.1)',
                             color: 'primary.main',
                         },
                     }}
@@ -307,12 +310,12 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
                             sx={{
                                 '& .MuiOutlinedInput-root': {
                                     borderRadius: '12px',
-                                    bgcolor: 'rgba(99, 102, 241, 0.05)',
+                                    bgcolor: 'rgba(63, 213, 186, 0.05)',
                                     '& fieldset': {
-                                        borderColor: 'rgba(99, 102, 241, 0.2)',
+                                        borderColor: 'rgba(63, 213, 186, 0.2)',
                                     },
                                     '&:hover fieldset': {
-                                        borderColor: 'rgba(99, 102, 241, 0.4)',
+                                        borderColor: 'rgba(63, 213, 186, 0.4)',
                                     },
                                     '&.Mui-focused fieldset': {
                                         borderColor: 'primary.main',
@@ -334,12 +337,12 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
                             sx={{
                                 '& .MuiOutlinedInput-root': {
                                     borderRadius: '12px',
-                                    bgcolor: 'rgba(99, 102, 241, 0.05)',
+                                    bgcolor: 'rgba(63, 213, 186, 0.05)',
                                     '& fieldset': {
-                                        borderColor: 'rgba(99, 102, 241, 0.2)',
+                                        borderColor: 'rgba(63, 213, 186, 0.2)',
                                     },
                                     '&:hover fieldset': {
-                                        borderColor: 'rgba(99, 102, 241, 0.4)',
+                                        borderColor: 'rgba(63, 213, 186, 0.4)',
                                     },
                                     '&.Mui-focused fieldset': {
                                         borderColor: 'primary.main',
@@ -361,12 +364,12 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
                             sx={{
                                 '& .MuiOutlinedInput-root': {
                                     borderRadius: '12px',
-                                    bgcolor: 'rgba(99, 102, 241, 0.05)',
+                                    bgcolor: 'rgba(63, 213, 186, 0.05)',
                                     '& fieldset': {
-                                        borderColor: 'rgba(99, 102, 241, 0.2)',
+                                        borderColor: 'rgba(63, 213, 186, 0.2)',
                                     },
                                     '&:hover fieldset': {
-                                        borderColor: 'rgba(99, 102, 241, 0.4)',
+                                        borderColor: 'rgba(63, 213, 186, 0.4)',
                                     },
                                     '&.Mui-focused fieldset': {
                                         borderColor: 'primary.main',
@@ -378,7 +381,7 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
                 )}
             </DialogContent>
 
-            <DialogActions sx={{ p: 3, pt: 2, borderTop: '1px solid rgba(99, 102, 241, 0.1)' }}>
+            <DialogActions sx={{ p: 3, pt: 2, borderTop: '1px solid rgba(63, 213, 186, 0.1)' }}>
                 <Button
                     onClick={handleClose}
                     disabled={saving}
@@ -397,14 +400,14 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
                     disabled={saving || loading}
                     startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
                     sx={{
-                        background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
-                        boxShadow: '0 4px 14px 0 rgba(99, 102, 241, 0.4)',
+                        background: 'linear-gradient(135deg, #3FD5BA 0%, #1A8B7E 100%)',
+                        boxShadow: '0 4px 14px 0 rgba(63, 213, 186, 0.4)',
                         '&:hover': {
-                            background: 'linear-gradient(135deg, #818CF8 0%, #6366F1 100%)',
-                            boxShadow: '0 6px 20px 0 rgba(99, 102, 241, 0.6)',
+                            background: 'linear-gradient(135deg, #5FE2C9 0%, #3FD5BA 100%)',
+                            boxShadow: '0 6px 20px 0 rgba(63, 213, 186, 0.6)',
                         },
                         '&:disabled': {
-                            background: 'rgba(99, 102, 241, 0.3)',
+                            background: 'rgba(63, 213, 186, 0.3)',
                             color: 'rgba(255, 255, 255, 0.5)',
                         },
                     }}

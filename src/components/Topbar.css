@@ -1,0 +1,167 @@
+/* Topbar — sample/styles.css 기반
+ * 좌측: SAUS / 세션제목 빵부스러기
+ * 우측: 라이브 dot + 모델 pill + 관리자/테마/설정 아이콘 버튼
+ */
+
+.topbar {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 60%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  flex: none;
+  position: relative;
+  z-index: 5;
+}
+
+.topbar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+.topbar-title .crumb {
+  color: var(--text-3);
+  font-weight: 500;
+  flex: none;
+}
+.topbar-title .crumb::after {
+  content: "/";
+  padding: 0 7px;
+  color: var(--text-4);
+}
+.topbar-title .crumb-current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-spacer { flex: 1; }
+
+.topbar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  flex: none;
+}
+
+.dot-live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 30%, transparent);
+  flex: none;
+}
+
+.topbar-btn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  font-family: inherit;
+}
+.topbar-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* 제목 옆 인라인 아이콘 버튼 (즐겨찾기/수정/삭제) */
+.topbar-title-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 6px;
+  flex: none;
+}
+.topbar-icon-btn {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--text-3);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  transition: background-color 120ms, color 120ms;
+}
+.topbar-icon-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.topbar-icon-btn.is-on {
+  color: var(--accent);
+}
+.topbar-icon-btn.danger:hover {
+  color: var(--danger);
+}
+
+/* 상단 인라인 편집 */
+.topbar-title-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.topbar-title-edit input {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border-strong));
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 600;
+  outline: 0;
+  min-width: 120px;
+  max-width: 360px;
+}
+.topbar-title-edit button {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  color: var(--text-3);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+}
+.topbar-title-edit button.confirm {
+  color: var(--accent);
+}
+.topbar-title-edit button:hover {
+  background: var(--hover);
+}

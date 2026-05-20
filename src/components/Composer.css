@@ -1,0 +1,447 @@
+/* Composer — sample/styles.css 통합 입력 박스
+ * 한 박스 안에 텍스트 + 첨부 + 모델/사고/추론/검색/도구 토글 + 전송
+ * focus-within 시 액센트 보더 + 글로우
+ */
+
+.composer-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px 0 12px;
+  position: relative;
+}
+
+/* 드래그 오버 시 표시되는 안내 오버레이 */
+.composer-drop-overlay {
+  position: absolute;
+  inset: 4px 0 8px 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 2px dashed var(--accent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
+}
+.composer-drop-overlay .ic-lg {
+  width: 28px;
+  height: 28px;
+}
+.composer-wrap.is-dragover .composer {
+  /* 드래그 오버 중에는 입력창 자체를 살짝 비추기 */
+  filter: brightness(0.98);
+}
+
+.composer {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.composer:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border-strong));
+  box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-card);
+}
+
+.composer-input {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 12px 6px;
+}
+.composer-input textarea {
+  flex: 1;
+  resize: none;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: 48px;
+  max-height: 220px;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  padding: 6px 0;
+  box-sizing: border-box;
+  overflow-y: hidden;
+}
+.composer-input textarea::placeholder {
+  color: var(--text-3);
+}
+.composer-input textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.composer-bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 8px;
+  flex-wrap: wrap;
+}
+
+.cmp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 13px;
+  font-family: inherit;
+  border: 1px solid transparent;
+  background: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.cmp-btn:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+.cmp-btn.on {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.cmp-btn.ghost {
+  color: var(--text-3);
+}
+.cmp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cmp-icon-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+}
+.cmp-icon-btn:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+.cmp-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cmp-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.cmp-spacer {
+  flex: 1;
+}
+
+.cmp-send {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: opacity 120ms, transform 120ms, filter 120ms;
+  flex: none;
+}
+.cmp-send:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.cmp-send:not(:disabled):hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+.cmp-send svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.2;
+}
+.cmp-stop {
+  background: rgba(239, 68, 68, 0.92);
+  color: #fff;
+}
+.cmp-stop:hover {
+  background: rgba(220, 38, 38, 0.98);
+}
+
+.composer-hint {
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 8px;
+}
+.composer-hint .ic {
+  width: 12px;
+  height: 12px;
+}
+
+/* 업로드 다이얼로그 내부 — 파일 + 설명 입력 */
+.composer-upload-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 0;
+}
+.composer-upload-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.composer-upload-fileinfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+.composer-upload-fileinfo > .ic {
+  color: var(--accent);
+  flex: none;
+}
+.composer-upload-fname {
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composer-upload-fsize {
+  font-size: 11.5px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
+  flex: none;
+}
+.composer-upload-remove {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  color: var(--text-3);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+}
+.composer-upload-remove:hover {
+  background: var(--hover);
+  color: var(--danger);
+}
+.composer-upload-desc {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: 0;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.composer-upload-desc::placeholder {
+  color: var(--text-4);
+}
+.composer-upload-desc:focus {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border-strong));
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* 업로드 진행/에러 인라인 표시 */
+.composer-upload-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 4px 6px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+.composer-upload-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  color: var(--text-2);
+}
+.composer-upload-chip.error {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--danger) 40%, transparent);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+/* 업로드 진행 중 — 임팩트 강조 패널 */
+.composer-upload-active {
+  margin: 4px 12px 8px;
+  padding: 10px 12px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--accent) 12%, transparent),
+      color-mix(in srgb, var(--accent) 4%, transparent)
+    ),
+    var(--surface-2);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  animation: composer-upload-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes composer-upload-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+}
+
+.composer-upload-active-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.composer-upload-active-title {
+  flex: 1;
+  min-width: 0;
+}
+.composer-upload-active-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.composer-upload-spinner {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-top-color: var(--accent);
+  animation: composer-upload-spin 0.85s linear infinite;
+}
+@keyframes composer-upload-spin {
+  to { transform: rotate(360deg); }
+}
+
+.composer-upload-active-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.composer-upload-active-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text);
+}
+.composer-upload-active-row > .ic {
+  color: var(--accent);
+  flex: none;
+}
+.composer-upload-active-fname {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composer-upload-active-bar {
+  position: relative;
+  width: 96px;
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+  flex: none;
+}
+.composer-upload-active-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent) 30%, transparent),
+    var(--accent),
+    color-mix(in srgb, var(--accent) 30%, transparent)
+  );
+  animation: composer-upload-bar 1.2s linear infinite;
+}
+@keyframes composer-upload-bar {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(340%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer-upload-active,
+  .composer-upload-spinner,
+  .composer-upload-active-bar-fill {
+    animation: none;
+  }
+}

@@ -10,9 +10,15 @@ echo "Generating runtime environment configuration..."
 # 환경 변수 기본값 설정
 API_BASE_URL="${REACT_APP_API_BASE_URL:-http://localhost:8000}"
 USER_ID="${REACT_APP_USER_ID:-demo-user}"
+JWT_TOKEN="${REACT_APP_JWT_TOKEN:-}"
 
 echo "API_BASE_URL: ${API_BASE_URL}"
 echo "USER_ID: ${USER_ID}"
+if [ -n "${JWT_TOKEN}" ]; then
+  echo "JWT_TOKEN: <set, length=${#JWT_TOKEN}>"
+else
+  echo "JWT_TOKEN: <empty>"
+fi
 
 # env-config.js 파일 생성
 cat <<EOF > /usr/share/nginx/html/env-config.js
@@ -20,7 +26,8 @@ cat <<EOF > /usr/share/nginx/html/env-config.js
 // This file is auto-generated at container startup
 window.__ENV__ = {
   API_BASE_URL: "${API_BASE_URL}",
-  USER_ID: "${USER_ID}"
+  USER_ID: "${USER_ID}",
+  JWT_TOKEN: "${JWT_TOKEN}"
 };
 EOF
 

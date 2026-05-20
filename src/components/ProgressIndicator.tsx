@@ -1,5 +1,6 @@
 import { FC } from 'react';
-import { Box, Typography, Fade, LinearProgress } from '@mui/material';
+import { Fade } from '@mui/material';
+import './ProgressIndicator.css';
 
 interface ProgressIndicatorProps {
     stage: string;
@@ -7,6 +8,7 @@ interface ProgressIndicatorProps {
 }
 
 const stageLabels: Record<string, string> = {
+    thinking: '생각 중이에요...',
     llm_processing: '잠시만요, 생각 정리 중이에요!',
     tool_selected: '필요한 도구를 골랐어요!',
     tool_start: '분석을 시작해볼게요!',
@@ -40,44 +42,12 @@ export const ProgressIndicator: FC<ProgressIndicatorProps> = ({ stage }) => {
 
     return (
         <Fade in timeout={300}>
-            <Box
-                display="flex"
-                width={"100%"}
-            >
-                <Box
-                    sx={{
-                        maxWidth: '50%',
-                        width: '100%',
-                        p: 2,
-                        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%)',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(99, 102, 241, 0.2)',
-                        borderRadius: '12px',
-                    }}
-                >
-                    <Box display="flex" alignItems="center" gap={1} mb={1}>
-                        <Typography
-                            variant="body2"
-                            sx={{
-                                fontWeight: 600,
-                                color: 'primary.main',
-                            }}
-                        >
-                            {label}
-                        </Typography>
-                    </Box>
-                    <LinearProgress
-                        sx={{
-                            height: 4,
-                            borderRadius: 2,
-                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                            '& .MuiLinearProgress-bar': {
-                                background: 'linear-gradient(90deg, #6366F1 0%, #EC4899 100%)',
-                            },
-                        }}
-                    />
-                </Box>
-            </Box>
+            <div className="progress-indicator" role="status" aria-live="polite">
+                <svg className="vertex-loader-svg" viewBox="0 0 16 16" aria-hidden="true">
+                    <path className="vertex-path" d="M8 15 L1 8 L8 1 L15 8" />
+                </svg>
+                <span className="progress-label">{label}</span>
+            </div>
         </Fade>
     );
 };

@@ -1,119 +1,100 @@
-import { FC } from 'react';
-import { ThemeProvider, createTheme, CssBaseline, GlobalStyles } from '@mui/material';
+import { FC, useState, useEffect, useMemo, createContext, useContext } from 'react';
+import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { Chatbot } from './components/Chatbot';
 
-const theme = createTheme({
-    palette: {
-        mode: 'dark',
-        primary: {
-            main: '#6366F1',
-            light: '#818CF8',
-            dark: '#4F46E5',
+type Mode = 'light' | 'dark';
+const STORAGE_KEY = 'saus-ui-mode';
+
+// 테마 모드 토글을 자식 컴포넌트(SessionSidebar 등)에 노출
+interface ColorModeContextValue {
+    mode: Mode;
+    toggle: () => void;
+}
+const ColorModeContext = createContext<ColorModeContextValue>({
+    mode: 'light',
+    toggle: () => undefined,
+});
+export const useColorMode = () => useContext(ColorModeContext);
+
+// MUI 팔레트는 index.css 의 디자인 토큰과 같은 hex 를 사용한다.
+// (Dialog/Table/Menu 등 유지 컴포넌트가 자연스럽게 새 톤을 따르도록)
+const buildTheme = (mode: Mode) =>
+    createTheme({
+        palette: {
+            mode,
+            primary:
+                mode === 'dark'
+                    ? { main: '#2dd4bf', light: '#5fdfc9', dark: '#0d9488', contrastText: '#0f2e2a' }
+                    : { main: '#0d9488', light: '#2dd4bf', dark: '#0f766e', contrastText: '#ffffff' },
+            secondary:
+                mode === 'dark'
+                    ? { main: '#f4a48b', light: '#f7baa6', dark: '#c8553d' }
+                    : { main: '#c8553d', light: '#f4a48b', dark: '#a04330' },
+            background:
+                mode === 'dark'
+                    ? { default: '#0a0d0d', paper: '#111615' }
+                    : { default: '#f8f8f6', paper: '#ffffff' },
+            text:
+                mode === 'dark'
+                    ? { primary: '#e7ece9', secondary: '#aab3b0', disabled: '#4a5250' }
+                    : { primary: '#14201d', secondary: '#4b5754', disabled: '#a8b0ad' },
+            divider: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)',
+            error: { main: mode === 'dark' ? '#fb7185' : '#dc2626' },
+            warning: { main: mode === 'dark' ? '#f0b86c' : '#c97a23' },
+            success: { main: mode === 'dark' ? '#4ade80' : '#16a34a' },
         },
-        secondary: {
-            main: '#EC4899',
-            light: '#F472B6',
-            dark: '#DB2777',
+        typography: {
+            fontFamily: [
+                '"Pretendard Variable"',
+                'Pretendard',
+                'ui-sans-serif',
+                '-apple-system',
+                'BlinkMacSystemFont',
+                '"Segoe UI"',
+                'sans-serif',
+            ].join(','),
+            fontSize: 14,
+            body1: { letterSpacing: '-0.005em' },
+            body2: { letterSpacing: '-0.005em' },
+            h1: { fontWeight: 700, letterSpacing: '-0.02em' },
+            h2: { fontWeight: 700, letterSpacing: '-0.02em' },
+            h3: { fontWeight: 600, letterSpacing: '-0.01em' },
+            h4: { fontWeight: 600 },
+            h5: { fontWeight: 600 },
+            h6: { fontWeight: 600 },
         },
-        background: {
-            default: '#0F172A',
-            paper: '#1E293B',
+        shape: {
+            borderRadius: 8,
         },
-        text: {
-            primary: '#F1F5F9',
-            secondary: '#94A3B8',
-        },
-    },
-    typography: {
-        fontFamily: [
-            'Inter',
-            '-apple-system',
-            'BlinkMacSystemFont',
-            '"Segoe UI"',
-            'Roboto',
-            '"Helvetica Neue"',
-            'Arial',
-            'sans-serif',
-        ].join(','),
-        h1: {
-            fontWeight: 700,
-        },
-        h2: {
-            fontWeight: 700,
-        },
-        h3: {
-            fontWeight: 600,
-        },
-        h4: {
-            fontWeight: 600,
-        },
-        h5: {
-            fontWeight: 600,
-        },
-        h6: {
-            fontWeight: 600,
-        },
-    },
-    shape: {
-        borderRadius: 12,
-    },
-    components: {
-        MuiButton: {
-            styleOverrides: {
-                root: {
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    borderRadius: 10,
-                    padding: '10px 20px',
+        components: {
+            MuiButton: {
+                styleOverrides: {
+                    root: {
+                        textTransform: 'none',
+                        fontWeight: 500,
+                        borderRadius: 6,
+                        padding: '6px 12px',
+                    },
                 },
             },
-        },
-        MuiTextField: {
-            styleOverrides: {
-                root: {
-                    '& .MuiOutlinedInput-root': {
-                        borderRadius: 10,
+            MuiTextField: {
+                styleOverrides: {
+                    root: {
+                        '& .MuiOutlinedInput-root': {
+                            borderRadius: 6,
+                        },
+                    },
+                },
+            },
+            MuiPaper: {
+                styleOverrides: {
+                    root: {
+                        backgroundImage: 'none',
                     },
                 },
             },
         },
-        MuiPaper: {
-            styleOverrides: {
-                root: {
-                    backgroundImage: 'none',
-                },
-            },
-        },
-    },
-});
-
-const globalStyles = (
-    <GlobalStyles
-        styles={{
-            body: {
-                margin: 0,
-                padding: 0,
-                background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
-                minHeight: '100vh',
-            },
-            '::-webkit-scrollbar': {
-                width: '8px',
-                height: '8px',
-            },
-            '::-webkit-scrollbar-track': {
-                background: 'rgba(30, 41, 59, 0.3)',
-                borderRadius: '10px',
-            },
-            '::-webkit-scrollbar-thumb': {
-                background: 'rgba(99, 102, 241, 0.5)',
-                borderRadius: '10px',
-                '&:hover': {
-                    background: 'rgba(99, 102, 241, 0.7)',
-                },
-            },
-        }}
-    />
-);
+    });
 
 const App: FC = () => {
     // 런타임 환경 변수 사용 (window.__ENV__)
@@ -122,12 +103,43 @@ const App: FC = () => {
                    process.env.REACT_APP_USER_ID ||
                    'demo-user';
 
+    const [mode, setMode] = useState<Mode>(() => {
+        const saved = (typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null) as Mode | null;
+        return saved === 'light' || saved === 'dark' ? saved : 'light';
+    });
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem(STORAGE_KEY, mode);
+        } catch {
+            // private mode 등에서 localStorage 사용 불가하면 무시
+        }
+        // body class 동기화 — index.css의 디자인 토큰(body.theme-light/dark) 적용용
+        const cls = document.body.classList;
+        cls.remove('theme-light', 'theme-dark');
+        cls.add('theme-' + mode);
+        if (!cls.contains('dens-compact') && !cls.contains('dens-cozy')) {
+            cls.add('dens-compact');
+        }
+    }, [mode]);
+
+    const colorMode = useMemo<ColorModeContextValue>(
+        () => ({
+            mode,
+            toggle: () => setMode((prev) => (prev === 'dark' ? 'light' : 'dark')),
+        }),
+        [mode]
+    );
+
+    const theme = useMemo(() => buildTheme(mode), [mode]);
+
     return (
-        <ThemeProvider theme={theme}>
-            <CssBaseline />
-            {globalStyles}
-            <Chatbot userId={userId} />
-        </ThemeProvider>
+        <ColorModeContext.Provider value={colorMode}>
+            <ThemeProvider theme={theme}>
+                <CssBaseline />
+                <Chatbot userId={userId} />
+            </ThemeProvider>
+        </ColorModeContext.Provider>
     );
 };
 

@@ -15,7 +15,7 @@ RUN npm ci --legacy-peer-deps
 COPY . .
 
 # Build the application
-# 환경 변수는 런타임에 주입되므로 빌드 시에는 필요 없음
+# 환경 변수는 런타임에 주입되므로 빌드 시에는 필요
 RUN npm run build
 
 # Stage 2: Serve with Nginx

@@ -1,0 +1,59 @@
+/* SessionFiles — 세션에 업로드된 파일 칩 스트립
+ * 메시지 영역 상단에 가로 정렬, 넘치면 가로 스크롤
+ */
+
+.session-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 0 8px;
+  flex: none;
+}
+
+.file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 8px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text);
+  flex: none;
+  max-width: 240px;
+}
+.file-chip > .ic {
+  color: var(--accent);
+  flex: none;
+}
+.file-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.file-chip-x {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  color: var(--text-3);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  font-family: inherit;
+}
+.file-chip-x:hover {
+  background: var(--hover);
+  color: var(--danger);
+}
+.file-chip-x:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

@@ -1,0 +1,51 @@
+/* Progress 표시 — Claude Desktop 스타일 인라인 상태 라인
+ * 작은 로더(favicon 모티프 vertex 선) + 회색 텍스트, 카드/보더 없음
+ */
+
+.progress-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  width: fit-content;
+}
+
+.vertex-loader-svg {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  display: block;
+  overflow: visible;
+}
+
+/* 6시 → 9시 → 12시 → 3시 — 16x16 viewBox 기준 총 길이 ≈ 29.7
+ * (SVG 자체는 22x22로 렌더하지만 viewBox는 그대로 16x16 → 비례 확대) */
+.vertex-path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: vertex-draw 1.6s ease-in-out infinite;
+}
+
+@keyframes vertex-draw {
+  0%   { stroke-dashoffset: 30; }
+  50%  { stroke-dashoffset: 0;  }
+  100% { stroke-dashoffset: 30; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vertex-path {
+    animation-duration: 5s;
+  }
+}
+
+.progress-label {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text-3);
+  line-height: 1.45;
+}

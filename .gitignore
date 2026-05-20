@@ -24,3 +24,9 @@ yarn-error.log*
 
 .idea
 CLAUDE.md
+DEPLOYMENT.md
+
+/sample
+
+.env
+

@@ -3,6 +3,7 @@
 export interface RuntimeEnv {
     API_BASE_URL: string;
     USER_ID: string;
+    JWT_TOKEN?: string;
 }
 
 declare global {

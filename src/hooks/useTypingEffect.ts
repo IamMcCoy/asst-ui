@@ -1,9 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
 
-// 랜덤 타이핑 속도 생성 (10ms ~ 20ms) - 사람이 타이핑하는 속도
-const getRandomDelay = () => {
-    return Math.floor(Math.random() * 10) + 10;
+// 청크당 추가할 글자 수 — 평균 ~3 글자/tick. 익숙한 단어를 빠르게 치는 효과.
+const minChunk = 2;
+const maxChunkExclusive = 6; // 2~5
+
+// 청크 사이 기본 딜레이 (ms). 랜덤하게 약간씩 흔들어 기계적 느낌 제거.
+const minBaseDelay = 14;
+const maxBaseDelayExclusive = 28; // 14~27ms
+
+// 특정 글자 뒤에 추가로 멈칫하는 시간 (ms). 사람의 호흡/생각 텀.
+const PUNCT_PAUSE: Record<string, number> = {
+    '.': 80,
+    '!': 80,
+    '?': 80,
+    ',': 35,
+    ';': 35,
+    ':': 35,
+    '\n': 55,
 };
+
+const randInt = (min: number, maxExclusive: number) =>
+    min + Math.floor(Math.random() * (maxExclusive - min));
 
 export const useTypingEffect = (text: string, isTyping: boolean) => {
     const [displayedText, setDisplayedText] = useState('');
@@ -14,7 +31,6 @@ export const useTypingEffect = (text: string, isTyping: boolean) => {
     // 텍스트가 변경되면 리셋
     useEffect(() => {
         if (text !== prevTextRef.current) {
-            console.log('[Typing] Text changed, resetting:', text.substring(0, 50));
             setDisplayedText('');
             setCurrentIndex(0);
             prevTextRef.current = text;
@@ -29,13 +45,26 @@ export const useTypingEffect = (text: string, isTyping: boolean) => {
             return;
         }
 
-        if (currentIndex < text.length) {
-            const delay = getRandomDelay();
-            timeoutRef.current = setTimeout(() => {
-                setDisplayedText((prev) => prev + text[currentIndex]);
-                setCurrentIndex((prev) => prev + 1);
-            }, delay);
+        if (currentIndex >= text.length) return;
+
+        // 이번 tick에 칠 청크 길이 결정 (구두점 만나면 거기서 끊기)
+        let nextIndex = Math.min(currentIndex + randInt(minChunk, maxChunkExclusive), text.length);
+        for (let i = currentIndex; i < nextIndex; i++) {
+            if (text[i] in PUNCT_PAUSE) {
+                nextIndex = i + 1; // 구두점 포함하여 끊기
+                break;
+            }
         }
+
+        const lastChar = text[nextIndex - 1];
+        const baseDelay = randInt(minBaseDelay, maxBaseDelayExclusive);
+        const pause = PUNCT_PAUSE[lastChar] ?? 0;
+        const delay = baseDelay + pause;
+
+        timeoutRef.current = setTimeout(() => {
+            setDisplayedText(text.slice(0, nextIndex));
+            setCurrentIndex(nextIndex);
+        }, delay);
 
         return () => {
             if (timeoutRef.current) {

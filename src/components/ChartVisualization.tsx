@@ -78,7 +78,7 @@ const ChartVisualization: React.FC<VisualizationInfo> = ({ viz_type, chart_confi
             <TableContainer
                 component={Paper}
                 sx={{
-                    backgroundColor: '#1e293b',
+                    backgroundColor: '#161d24',
                     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
                 }}
             >
@@ -91,7 +91,7 @@ const ChartVisualization: React.FC<VisualizationInfo> = ({ viz_type, chart_confi
                                     sx={{
                                         color: '#ffffff',
                                         fontWeight: 'bold',
-                                        backgroundColor: '#0f172a',
+                                        backgroundColor: '#0e1419',
                                         borderBottom: '2px solid #334155'
                                     }}
                                 >

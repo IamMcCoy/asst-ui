@@ -21,9 +21,10 @@ import { Tool } from '../types/api';
 
 interface ToolSelectorProps {
     disabled?: boolean;
+    renderTrigger?: (open: (e: React.MouseEvent<HTMLElement>) => void, isOpen: boolean) => React.ReactNode;
 }
 
-export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false }) => {
+export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false, renderTrigger }) => {
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
     const [tools, setTools] = useState<Record<string, Tool>>({});
     const [loading, setLoading] = useState(false);
@@ -43,7 +44,8 @@ export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false }) => {
         }
     };
 
-    const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+        if (disabled) return;
         setAnchorEl(event.currentTarget);
         fetchTools();
     };
@@ -99,22 +101,26 @@ export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false }) => {
 
     return (
         <>
-            <Chip
-                icon={<BuildIcon />}
-                label="도구 설정"
-                onClick={handleClick}
-                disabled={disabled}
-                variant="outlined"
-                sx={{
-                    transition: 'all 0.2s ease',
-                    borderColor: 'rgba(99, 102, 241, 0.3)',
-                    '&:hover': {
-                        transform: 'translateY(-2px)',
-                        borderColor: 'primary.main',
-                        bgcolor: 'rgba(99, 102, 241, 0.1)',
-                    },
-                }}
-            />
+            {renderTrigger ? (
+                renderTrigger(handleClick, open)
+            ) : (
+                <Chip
+                    icon={<BuildIcon />}
+                    label="도구 설정"
+                    onClick={handleClick}
+                    disabled={disabled}
+                    variant="outlined"
+                    sx={{
+                        transition: 'all 0.2s ease',
+                        borderColor: 'rgba(63, 213, 186, 0.3)',
+                        '&:hover': {
+                            transform: 'translateY(-2px)',
+                            borderColor: 'primary.main',
+                            bgcolor: 'rgba(63, 213, 186, 0.1)',
+                        },
+                    }}
+                />
+            )}
 
             <Popover
                 open={open}
@@ -132,10 +138,12 @@ export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false }) => {
                     sx: {
                         width: 320,
                         maxHeight: 400,
-                        bgcolor: 'rgba(30, 41, 59, 0.95)',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(99, 102, 241, 0.2)',
-                        borderRadius: '12px',
+                        bgcolor: 'background.paper',
+                        color: 'text.primary',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 'var(--r-md)',
+                        boxShadow: 'var(--shadow-pop)',
                     },
                 }}
             >
@@ -150,7 +158,7 @@ export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false }) => {
                             sx={{
                                 ml: 'auto',
                                 color: 'text.secondary',
-                                bgcolor: 'rgba(99, 102, 241, 0.1)',
+                                bgcolor: 'rgba(63, 213, 186, 0.1)',
                                 px: 1,
                                 py: 0.5,
                                 borderRadius: '4px',
@@ -169,11 +177,11 @@ export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false }) => {
                             sx={{
                                 flex: 1,
                                 fontSize: '0.75rem',
-                                borderColor: 'rgba(99, 102, 241, 0.3)',
+                                borderColor: 'rgba(63, 213, 186, 0.3)',
                                 color: 'primary.main',
                                 '&:hover': {
                                     borderColor: 'primary.main',
-                                    bgcolor: 'rgba(99, 102, 241, 0.1)',
+                                    bgcolor: 'rgba(63, 213, 186, 0.1)',
                                 },
                             }}
                         >
@@ -187,11 +195,11 @@ export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false }) => {
                             sx={{
                                 flex: 1,
                                 fontSize: '0.75rem',
-                                borderColor: 'rgba(236, 72, 153, 0.3)',
-                                color: '#EC4899',
+                                borderColor: 'rgba(224, 115, 101, 0.3)',
+                                color: '#E07365',
                                 '&:hover': {
-                                    borderColor: '#EC4899',
-                                    bgcolor: 'rgba(236, 72, 153, 0.1)',
+                                    borderColor: '#E07365',
+                                    bgcolor: 'rgba(224, 115, 101, 0.1)',
                                 },
                             }}
                         >
@@ -199,7 +207,7 @@ export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false }) => {
                         </Button>
                     </Box>
 
-                    <Divider sx={{ borderColor: 'rgba(99, 102, 241, 0.1)', mb: 1 }} />
+                    <Divider sx={{ borderColor: 'rgba(63, 213, 186, 0.1)', mb: 1 }} />
                 </Box>
 
                 {loading ? (
@@ -215,7 +223,7 @@ export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false }) => {
                                     px: 2,
                                     py: 0.75,
                                     '&:hover': {
-                                        bgcolor: 'rgba(99, 102, 241, 0.05)',
+                                        bgcolor: 'rgba(63, 213, 186, 0.05)',
                                     },
                                 }}
                             >

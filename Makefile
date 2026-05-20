@@ -2,21 +2,22 @@
 
 # Variables - can be overridden via command line
 IMAGE_NAME ?= saus-frontend
-TAG ?= v0.9.0
+TAG ?= v1.2.7
 CONTAINER_NAME ?= saus-frontend-container
 PORT ?= 80
 HOST_PORT ?= 8080
 
 # Runtime environment variables (injected at container startup)
-API_URL ?= http://10.1.35.73:39990
+API_URL ?= http://192.168.1.70:31998
 USER_ID ?= demo-user
+JWT_TOKEN ?=
 
-# Docker registry (for push/pull)
-REGISTRY ?=
+# Docker registry (default: SecuLayer 사내 레지스트리)
+REGISTRY ?= registry.seculayer.com:31500
 REGISTRY_IMAGE = $(if $(REGISTRY),$(REGISTRY)/,)$(IMAGE_NAME):$(TAG)
 
-# Full image name
-IMAGE_TAG = $(IMAGE_NAME):$(TAG)
+# Full image name (build/run/push 모두 동일한 풀 경로 사용)
+IMAGE_TAG = $(REGISTRY_IMAGE)
 TAR_FILE = $(IMAGE_NAME)-$(TAG).tar
 
 .PHONY: help build run run-bg stop clean logs restart ps deploy save load push pull
@@ -54,9 +55,8 @@ help:
 # Build docker image (no build args needed - env vars injected at runtime)
 build:
 	@echo "Building docker image: $(IMAGE_TAG) (linux/amd64)"
-	docker build --platform linux/amd64 -t $(IMAGE_TAG) .
+	docker build --no-cache --platform linux/amd64 -t $(IMAGE_TAG) .
 	@echo "Build complete: $(IMAGE_TAG)"
-	@echo "Note: Environment variables will be injected at runtime"
 
 # Run container in foreground (useful for debugging)
 run: stop
@@ -68,6 +68,7 @@ run: stop
 		-p $(HOST_PORT):$(PORT) \
 		-e REACT_APP_API_BASE_URL=$(API_URL) \
 		-e REACT_APP_USER_ID=$(USER_ID) \
+		-e REACT_APP_JWT_TOKEN=$(JWT_TOKEN) \
 		--name $(CONTAINER_NAME) \
 		$(IMAGE_TAG)
 
@@ -81,6 +82,7 @@ run-bg: stop
 		-p $(HOST_PORT):$(PORT) \
 		-e REACT_APP_API_BASE_URL=$(API_URL) \
 		-e REACT_APP_USER_ID=$(USER_ID) \
+		-e REACT_APP_JWT_TOKEN=$(JWT_TOKEN) \
 		--name $(CONTAINER_NAME) \
 		$(IMAGE_TAG)
 	@echo "Container started. Use 'make logs' to view logs"
@@ -143,11 +145,8 @@ load:
 push:
 	@if [ -z "$(REGISTRY)" ]; then \
 		echo "Error: REGISTRY not set"; \
-		echo "Usage: make push REGISTRY=your-username"; \
 		exit 1; \
 	fi
-	@echo "Tagging image: $(REGISTRY_IMAGE)"
-	docker tag $(IMAGE_TAG) $(REGISTRY_IMAGE)
 	@echo "Pushing to registry: $(REGISTRY_IMAGE)"
 	docker push $(REGISTRY_IMAGE)
 	@echo "Push complete!"
@@ -156,10 +155,8 @@ push:
 pull:
 	@if [ -z "$(REGISTRY)" ]; then \
 		echo "Error: REGISTRY not set"; \
-		echo "Usage: make pull REGISTRY=your-username"; \
 		exit 1; \
 	fi
 	@echo "Pulling from registry: $(REGISTRY_IMAGE)"
 	docker pull $(REGISTRY_IMAGE)
-	docker tag $(REGISTRY_IMAGE) $(IMAGE_TAG)
 	@echo "Pull complete!"

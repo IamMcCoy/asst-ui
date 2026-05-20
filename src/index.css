@@ -1,0 +1,210 @@
+/* SAUS — design tokens (sample/styles.css 기반)
+ * - 색/라운드/폰트/밀도 토큰을 한 곳에서 관리
+ * - body.theme-light (기본) / body.theme-dark 로 토글
+ * - 교체 대상 컴포넌트(Sidebar/Composer/Message/ToolCard/Chat 화면)는 이 토큰을 직접 참조
+ * - 유지 대상(MUI Dialog/Table/Menu/Tooltip 등)은 MUI 테마(App.tsx)가 같은 hex 값을 받아 사용
+ */
+
+:root {
+  --font-sans: "Pretendard Variable", Pretendard, ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px -8px rgba(0, 0, 0, 0.10);
+  --shadow-pop: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 16px 48px -12px rgba(0, 0, 0, 0.40);
+}
+
+/* LIGHT (기본) */
+body.theme-light {
+  --bg: #f8f8f6;
+  --bg-grid: rgba(0, 0, 0, 0.025);
+  --surface: #ffffff;
+  --surface-2: #f3f3f0;
+  --surface-3: #ebebe7;
+  --hover: rgba(0, 0, 0, 0.04);
+  --border: rgba(0, 0, 0, 0.07);
+  --border-strong: rgba(0, 0, 0, 0.12);
+  --text: #14201d;
+  --text-2: #4b5754;
+  --text-3: #7d8784;
+  --text-4: #a8b0ad;
+
+  --accent: #0d9488;
+  --accent-soft: rgba(13, 148, 136, 0.10);
+  --accent-soft-2: rgba(13, 148, 136, 0.18);
+  --accent-ink: #ffffff;
+
+  --user: #c8553d;
+  --user-soft: rgba(200, 85, 61, 0.08);
+
+  --warn: #c97a23;
+  --ok: #16a34a;
+  --danger: #dc2626;
+
+  color-scheme: light;
+}
+
+/* DARK */
+body.theme-dark {
+  --bg: #0a0d0d;
+  --bg-grid: rgba(255, 255, 255, 0.022);
+  --surface: #111615;
+  --surface-2: #161c1b;
+  --surface-3: #1c2322;
+  --hover: rgba(255, 255, 255, 0.04);
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.10);
+  --text: #e7ece9;
+  --text-2: #aab3b0;
+  --text-3: #707977;
+  --text-4: #4a5250;
+
+  --accent: #2dd4bf;
+  --accent-soft: rgba(45, 212, 191, 0.12);
+  --accent-soft-2: rgba(45, 212, 191, 0.20);
+  --accent-ink: #0f2e2a;
+
+  --user: #f4a48b;
+  --user-soft: rgba(244, 164, 139, 0.10);
+
+  --warn: #f0b86c;
+  --ok: #4ade80;
+  --danger: #fb7185;
+
+  color-scheme: dark;
+}
+
+/* density */
+body.dens-compact {
+  --gap: 12px;
+  --pad-msg: 10px 12px;
+  --fs-msg: 13.5px;
+  --fs-meta: 11px;
+  --avatar: 24px;
+}
+body.dens-cozy {
+  --gap: 16px;
+  --pad-msg: 12px 14px;
+  --fs-msg: 14px;
+  --fs-meta: 11.5px;
+  --avatar: 28px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--accent-soft-2);
+  color: var(--text);
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--font-mono);
+}
+
+/* SVG icon defaults — 교체 대상 컴포넌트에서 사용 */
+.ic {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  flex: none;
+}
+.ic-sm { width: 14px; height: 14px; }
+.ic-lg { width: 18px; height: 18px; }
+
+/* highlight.js 미니 테마 — 디자인 토큰 기반, 라이트/다크 자동 대응
+ * 외부 highlight.js 테마 CSS 대신 사용 (기존 github-dark.css 제거됨)
+ */
+.hljs {
+  color: var(--text);
+  background: transparent;
+}
+.hljs-comment,
+.hljs-quote {
+  color: var(--text-3);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-name,
+.hljs-tag {
+  color: var(--accent);
+  font-weight: 600;
+}
+.hljs-string,
+.hljs-title,
+.hljs-section,
+.hljs-attribute,
+.hljs-literal,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-addition {
+  color: var(--user);
+}
+.hljs-deletion,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-meta {
+  color: var(--warn);
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link {
+  color: var(--danger);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
+}
+
+/* Scrollbar — 토큰 기반, 라이트/다크 자동 대응 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-4);
+}
