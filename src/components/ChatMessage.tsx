@@ -75,6 +75,12 @@ export const ChatMessage: FC<ChatMessageProps> = ({
                 <div className="msg-body">
                     <div className="msg-meta">
                         <span className="ts">{formatTimestamp(message.timestamp)}</span>
+                        {!isUser && message.model && (
+                            <>
+                                <span className="dot" aria-hidden>·</span>
+                                <span className="model">{message.model}</span>
+                            </>
+                        )}
                     </div>
 
                     <div className="msg-bubble">

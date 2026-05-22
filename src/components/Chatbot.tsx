@@ -400,6 +400,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                         ...msg,
                         message_id: msg.metadata.message_id,
                         timestamp: msg.metadata.timestamp || msg.timestamp,
+                        model: msg.metadata.model ?? null,
                     };
                 }
                 // user 메시지의 경우 기존 message_id 사용

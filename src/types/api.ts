@@ -103,6 +103,7 @@ export interface Message {
     content: string;
     timestamp: string;
     feedback_type?: 'thumbs_up' | 'thumbs_down';
+    model?: string | null;
 }
 
 export interface FeedbackRequest {

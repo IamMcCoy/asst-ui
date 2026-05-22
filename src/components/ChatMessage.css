@@ -64,6 +64,13 @@
   color: var(--text-4);
   font-feature-settings: "tnum";
 }
+.msg-meta .dot {
+  color: var(--text-4);
+}
+.msg-meta .model {
+  color: var(--text-4);
+  letter-spacing: 0.01em;
+}
 .msg.user .msg-meta {
   justify-content: flex-end;
 }
