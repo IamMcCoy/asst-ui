@@ -6,7 +6,6 @@ import {
     UpdateTitleRequest,
     ApiKeysRequest,
     ToolsResponse,
-    ToolBulkEnableRequest,
     ExtraInfoMap,
     UploadedFile,
     AdminLogsQuery,
@@ -69,6 +68,20 @@ const authHeaders = (extra: Record<string, string> = {}): Record<string, string>
 const jsonHeaders = (): Record<string, string> =>
     authHeaders({ 'Content-Type': 'application/json' });
 
+// 공통 fetch — !ok 시 throw. errorMessage 지정 시 사용자 노출용 메시지로 대체.
+// 커스텀 상태코드 분기가 필요한 곳(startChatTask, uploadFile 등)은 raw fetch 유지.
+const apiFetch = async (
+    path: string,
+    init: RequestInit = {},
+    errorMessage?: string
+): Promise<Response> => {
+    const response = await fetch(`${BASE_URL}${path}`, init);
+    if (!response.ok) {
+        throw new Error(errorMessage ?? `HTTP error! status: ${response.status}`);
+    }
+    return response;
+};
+
 // 새 SSE 이벤트 핸들러 인터페이스
 export interface StreamHandlers {
     // snapshot: 재구독/신규 구독 시 첫 이벤트로 항상 1회 전송. 본문 버퍼를 set.
@@ -88,7 +101,8 @@ export interface StreamHandlers {
 // 비동기 task 큐 패턴 — POST 응답 (성공/충돌 분기)
 export type StartTaskResult =
     | { ok: true; data: StartTaskResponse }
-    | { ok: false; conflict: string };
+    | { ok: false; conflict: string }
+    | { ok: false; atCapacity: true };
 
 // SSE 프레임 파서 — handlers에 dispatch
 const dispatchSseEvent = (
@@ -205,6 +219,10 @@ export const chatService = {
             const body = (await response.json()) as StartTaskConflict;
             return { ok: false, conflict: body.detail.active_task_id };
         }
+        // 429 — 서버 동시 task 용량 초과. limit 수치는 노출하지 않음
+        if (response.status === 429) {
+            return { ok: false, atCapacity: true };
+        }
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -219,13 +237,10 @@ export const chatService = {
         const controller = new AbortController();
         (async () => {
             try {
-                const response = await fetch(
-                    `${BASE_URL}/asst/chat/tasks/${taskId}/stream`,
+                const response = await apiFetch(
+                    `/asst/chat/tasks/${taskId}/stream`,
                     { headers: authHeaders(), signal: controller.signal },
                 );
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
                 const reader = response.body?.getReader();
                 if (!reader) throw new Error('Response body is null');
                 await parseSseStream(reader, handlers);
@@ -240,14 +255,11 @@ export const chatService = {
 
     // 3) 세션의 진행 중 작업 조회
     async getActiveTask(userId: string, sessionId: string): Promise<ActiveTaskResponse> {
-        const response = await fetch(
-            `${BASE_URL}/asst/users/${userId}/sessions/${sessionId}/active-task`,
+        const response = await apiFetch(
+            `/asst/users/${userId}/sessions/${sessionId}/active-task`,
             { headers: authHeaders() },
         );
         if (response.status === 204) return { task_id: null };
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
         return response.json();
     },
 
@@ -286,14 +298,9 @@ export const sessionService = {
 
     // 세션 목록 조회
     async listSessions(userId: string): Promise<Session[]> {
-        const response = await fetch(`${BASE_URL}/asst/users/${userId}/sessions`, {
+        const response = await apiFetch(`/asst/users/${userId}/sessions`, {
             headers: authHeaders(),
         });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
         return response.json();
     },
 
@@ -307,30 +314,19 @@ export const sessionService = {
         if (options.limit != null) params.set('limit', String(options.limit));
         if (options.offset != null) params.set('offset', String(options.offset));
         const qs = params.toString();
-        const url = `${BASE_URL}/asst/users/${userId}/sessions/${sessionId}${qs ? `?${qs}` : ''}`;
-
-        const response = await fetch(url, { headers: authHeaders() });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
+        const response = await apiFetch(
+            `/asst/users/${userId}/sessions/${sessionId}${qs ? `?${qs}` : ''}`,
+            { headers: authHeaders() }
+        );
         return response.json();
     },
 
     // 세션 삭제
     async deleteSession(userId: string, sessionId: string): Promise<void> {
-        const response = await fetch(
-            `${BASE_URL}/asst/users/${userId}/sessions/${sessionId}`,
-            {
-                method: 'DELETE',
-                headers: authHeaders(),
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        await apiFetch(`/asst/users/${userId}/sessions/${sessionId}`, {
+            method: 'DELETE',
+            headers: authHeaders(),
+        });
     },
 
     // 세션 제목 수정
@@ -340,31 +336,19 @@ export const sessionService = {
         title: string
     ): Promise<void> {
         const request: UpdateTitleRequest = { title };
-        const response = await fetch(
-            `${BASE_URL}/asst/users/${userId}/sessions/${sessionId}/title`,
-            {
-                method: 'PATCH',
-                headers: jsonHeaders(),
-                body: JSON.stringify(request),
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        await apiFetch(`/asst/users/${userId}/sessions/${sessionId}/title`, {
+            method: 'PATCH',
+            headers: jsonHeaders(),
+            body: JSON.stringify(request),
+        });
     },
 
     // 세션의 모든 extra_info 조회
     async getAllExtraInfo(userId: string, sessionId: string): Promise<ExtraInfoMap> {
-        const response = await fetch(
-            `${BASE_URL}/asst/users/${userId}/sessions/${sessionId}/extra-info`,
+        const response = await apiFetch(
+            `/asst/users/${userId}/sessions/${sessionId}/extra-info`,
             { headers: authHeaders() }
         );
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
         const responseData = await response.json();
         const messages = responseData.extra_info || {};
 
@@ -379,35 +363,16 @@ export const sessionService = {
 
         return result;
     },
-
-    // 전체 세션 메시지 키워드 검색 (RediSearch)
-    async searchMessages(userId: string, keyword: string): Promise<unknown> {
-        const params = new URLSearchParams({ keyword });
-        const response = await fetch(
-            `${BASE_URL}/asst/users/${userId}/sessions/search/messages?${params.toString()}`,
-            { headers: authHeaders() }
-        );
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        return response.json();
-    },
 };
 
 export const feedbackService = {
     // 피드백 제출
     async submitFeedback(request: FeedbackRequest): Promise<void> {
-        const response = await fetch(`${BASE_URL}/asst/feedback`, {
+        await apiFetch(`/asst/feedback`, {
             method: 'POST',
             headers: jsonHeaders(),
             body: JSON.stringify(request),
         });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
     },
 };
 
@@ -415,41 +380,27 @@ export const apiKeyService = {
     // API 키 저장
     async saveApiKeys(userId: string, keys: Record<string, string>): Promise<void> {
         const request: ApiKeysRequest = { keys };
-        const response = await fetch(`${BASE_URL}/asst/users/${userId}/apikeys`, {
+        await apiFetch(`/asst/users/${userId}/apikeys`, {
             method: 'PUT',
             headers: jsonHeaders(),
             body: JSON.stringify(request),
         });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
     },
 
     // API 키 조회
     async getApiKeys(userId: string): Promise<Record<string, string>> {
-        const response = await fetch(`${BASE_URL}/asst/users/${userId}/apikeys`, {
+        const response = await apiFetch(`/asst/users/${userId}/apikeys`, {
             headers: authHeaders(),
         });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
         return response.json();
     },
 };
 
 export const modelService = {
     async getModels(): Promise<string[]> {
-        const response = await fetch(`${BASE_URL}/asst/models`, {
+        const response = await apiFetch(`/asst/models`, {
             headers: authHeaders(),
         });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
         const data = await response.json();
         // API가 배열 또는 { models: [...] } 형태로 반환할 수 있음
         if (Array.isArray(data)) {
@@ -464,66 +415,33 @@ export const modelService = {
 export const toolService = {
     // 모든 도구 상태 조회
     async getAllTools(): Promise<ToolsResponse> {
-        const response = await fetch(`${BASE_URL}/asst/tools`, {
-            headers: authHeaders(),
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
+        const response = await apiFetch(`/asst/tools`, { headers: authHeaders() });
         return response.json();
     },
 
     // 특정 도구 활성화/비활성화
     async setToolEnabled(toolName: string, enabled: boolean): Promise<void> {
-        const response = await fetch(`${BASE_URL}/asst/tools/${toolName}`, {
+        await apiFetch(`/asst/tools/${toolName}`, {
             method: 'PATCH',
             headers: jsonHeaders(),
             body: JSON.stringify({ enabled }),
         });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-    },
-
-    // 여러 도구 일괄 활성화/비활성화
-    async setToolsBulk(tools: Record<string, boolean>): Promise<void> {
-        const request: ToolBulkEnableRequest = { tools };
-        const response = await fetch(`${BASE_URL}/asst/tools`, {
-            method: 'PATCH',
-            headers: jsonHeaders(),
-            body: JSON.stringify(request),
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
     },
 
     // 모든 도구 활성화
     async enableAllTools(): Promise<void> {
-        const response = await fetch(`${BASE_URL}/asst/tools/enable-all`, {
+        await apiFetch(`/asst/tools/enable-all`, {
             method: 'POST',
             headers: authHeaders(),
         });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
     },
 
     // 모든 도구 비활성화
     async disableAllTools(): Promise<void> {
-        const response = await fetch(`${BASE_URL}/asst/tools/disable-all`, {
+        await apiFetch(`/asst/tools/disable-all`, {
             method: 'POST',
             headers: authHeaders(),
         });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
     },
 };
 
@@ -565,13 +483,14 @@ const localizeUploadDetail = (detail: string): string => {
 };
 
 // 파일 업로드 서비스
-// 백엔드 응답 형태가 명세상 명시되지 않아 알려진 키 위주로 정규화
+// ponytail: 백엔드가 snake_case(file_id/filename/uploaded_at)로 응답한다고 가정.
+// 파일 목록/삭제가 깨지면 여기 키 이름부터 실제 응답과 대조할 것.
 const normalizeUploadedFile = (raw: any, fallbackName?: string): UploadedFile => ({
-    file_id: raw?.file_id ?? raw?.id ?? raw?.fileId,
-    filename: raw?.filename ?? raw?.name ?? fallbackName ?? '',
+    file_id: raw?.file_id,
+    filename: raw?.filename ?? fallbackName ?? '',
     size: raw?.size,
     description: raw?.description,
-    uploaded_at: raw?.uploaded_at ?? raw?.created_at,
+    uploaded_at: raw?.uploaded_at,
     status: raw?.status,
 });
 
@@ -628,24 +547,13 @@ export const fileService = {
 
     // 세션 파일 목록 조회
     async listFiles(userId: string, sessionId: string): Promise<UploadedFile[]> {
-        const response = await fetch(
-            `${BASE_URL}/asst/users/${userId}/sessions/${sessionId}/files`,
-            { headers: authHeaders() }
+        const response = await apiFetch(
+            `/asst/users/${userId}/sessions/${sessionId}/files`,
+            { headers: authHeaders() },
+            '파일 목록을 불러오지 못했습니다.'
         );
-
-        if (!response.ok) {
-            throw new Error('파일 목록을 불러오지 못했습니다.');
-        }
-
         const data = await response.json();
-        const items: any[] = Array.isArray(data)
-            ? data
-            : Array.isArray(data?.files)
-            ? data.files
-            : Array.isArray(data?.items)
-            ? data.items
-            : [];
-
+        const items: any[] = Array.isArray(data) ? data : data?.files ?? [];
         return items.map((it) => normalizeUploadedFile(it));
     },
 
@@ -655,17 +563,11 @@ export const fileService = {
         sessionId: string,
         fileId: string
     ): Promise<void> {
-        const response = await fetch(
-            `${BASE_URL}/asst/users/${userId}/sessions/${sessionId}/files/${fileId}`,
-            {
-                method: 'DELETE',
-                headers: authHeaders(),
-            }
+        await apiFetch(
+            `/asst/users/${userId}/sessions/${sessionId}/files/${fileId}`,
+            { method: 'DELETE', headers: authHeaders() },
+            '파일 삭제에 실패했습니다.'
         );
-
-        if (!response.ok) {
-            throw new Error('파일 삭제에 실패했습니다.');
-        }
     },
 };
 
@@ -703,30 +605,29 @@ export const adminService = {
         }
 
         const raw = await response.json();
-        console.log('[Admin Logs] Raw response:', raw);
-
         // 실제 응답: { result: true, data: { contents: [...], page, total_count, search_count } }
-        // 일부 환경에서는 래핑 없이 바로 올 수도 있어 양쪽 다 시도
         const payload = raw?.data ?? raw;
-
-        const itemCandidates = [
-            payload?.contents,
-            payload?.items,
-            payload?.logs,
-            payload?.results,
-            payload?.rows,
-            payload?.records,
-            Array.isArray(payload) ? payload : undefined,
-        ];
-        const rawItems = itemCandidates.find((v) => Array.isArray(v));
-        const items = Array.isArray(rawItems) ? rawItems : [];
+        const items: any[] = Array.isArray(payload?.contents) ? payload.contents : [];
 
         return {
-            total_count: payload?.total_count ?? payload?.total ?? items.length,
-            search_count: payload?.search_count ?? payload?.total_count ?? payload?.total ?? items.length,
+            total_count: payload?.total_count ?? items.length,
+            search_count: payload?.search_count ?? payload?.total_count ?? items.length,
             page: payload?.page ?? query.page ?? 1,
             per_page: payload?.per_page ?? query.per_page ?? 20,
             items,
         };
+    },
+
+    // 사용자당 세션 상한 조회/설정 (런타임 노브, 단일워커 in-memory — 재시작 시 XML 기본값으로 리셋)
+    async getMaxSessions(): Promise<number> {
+        const res = await apiFetch(`/asst/admin/config/max-sessions`, { headers: authHeaders() });
+        return (await res.json()).max_sessions_per_user;
+    },
+    async setMaxSessions(value: number): Promise<number> {
+        const res = await apiFetch(`/asst/admin/config/max-sessions?value=${value}`, {
+            method: 'POST',
+            headers: authHeaders(),
+        });
+        return (await res.json()).max_sessions_per_user;
     },
 };

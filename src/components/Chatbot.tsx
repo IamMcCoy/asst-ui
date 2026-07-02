@@ -8,9 +8,10 @@ import { Topbar } from './Topbar';
 import { EmptyState } from './EmptyState';
 import { SettingsDialog } from './SettingsDialog';
 import { AdminLogsDialog } from './AdminLogsDialog';
+import { AdminSettingsDialog } from './AdminSettingsDialog';
 import { Session, Message, ChatRequest, ExtraInfoMap, ExtraInfo, UploadedFile } from '../types/api';
 import { chatService, sessionService, feedbackService, modelService, fileService, isAdminToken, StreamHandlers } from '../services/api';
-import { AutoAwesome as BotIcon } from '@mui/icons-material';
+import { IconSparkle } from './icons';
 import { useColorMode } from '../App';
 import { useFavoriteSessions } from '../hooks/useFavoriteSessions';
 
@@ -52,6 +53,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
     const [sessionFiles, setSessionFiles] = useState<UploadedFile[]>([]);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [adminOpen, setAdminOpen] = useState(false);
+    const [adminSettingsOpen, setAdminSettingsOpen] = useState(false);
     const [uploadNotice, setUploadNotice] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -752,6 +754,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
             thinkingMode: boolean;
             selectedModel: string | null;
             reasoningEffort: string | null;
+            historyMode: boolean;
             fileIds: string[];
         }
     ) => {
@@ -787,12 +790,18 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
             model: options.selectedModel,
             thinking_mode: options.thinkingMode,
             reasoning_effort: options.reasoningEffort,
-            history_mode: true,
+            history_mode: options.historyMode,
             file_ids: options.fileIds.length > 0 ? options.fileIds : null,
         };
 
         try {
             const started = await chatService.startChatTask(request);
+            if (!started.ok && 'atCapacity' in started) {
+                setError('현재 처리 중인 요청이 많아 잠시 후 다시 시도해 주세요.');
+                setLoadingMap((m) => ({ ...m, [sidParam]: false }));
+                setProgressMap((m) => ({ ...m, [sidParam]: EMPTY_PROGRESS }));
+                return;
+            }
             const taskId = started.ok ? started.data.task_id : started.conflict;
             if (!started.ok) {
                 console.warn('[409 Conflict] 기존 task에 재구독:', taskId);
@@ -903,6 +912,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                     mode={mode}
                     onToggleMode={toggleColorMode}
                     onOpenAdmin={() => setAdminOpen(true)}
+                    onOpenAdminSettings={() => setAdminSettingsOpen(true)}
                     onOpenSettings={() => setSettingsOpen(true)}
                     isAdmin={isAdmin}
                     onRenameSession={handleUpdateTitle}
@@ -993,6 +1003,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                                                 thinkingMode: false,
                                                 selectedModel,
                                                 reasoningEffort: null,
+                                                historyMode: true,
                                                 fileIds: sessionFiles.map((f) => f.file_id).filter(Boolean),
                                             })
                                         }
@@ -1047,7 +1058,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                                 {progressStage && progressMessage && !streamingMessage && (
                                     <div className="msg bot">
                                         <div className="msg-avatar bot">
-                                            <BotIcon style={{ fontSize: 16 }} />
+                                            <IconSparkle />
                                         </div>
                                         <div className="msg-body">
                                             <ProgressIndicator stage={progressStage} message={progressMessage} />
@@ -1073,7 +1084,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                                 {loading && !streamingMessage && !progressStage && (
                                     <div className="msg bot">
                                         <div className="msg-avatar bot">
-                                            <BotIcon style={{ fontSize: 16 }} />
+                                            <IconSparkle />
                                         </div>
                                         <div className="msg-body">
                                             <ProgressIndicator stage="generating_answer" />
@@ -1198,6 +1209,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
 
             <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} userId={userId} />
             <AdminLogsDialog open={adminOpen} onClose={() => setAdminOpen(false)} />
+            <AdminSettingsDialog open={adminSettingsOpen} onClose={() => setAdminSettingsOpen(false)} />
         </Box>
     );
 };

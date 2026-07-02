@@ -12,10 +12,7 @@ import {
     Alert,
     CircularProgress,
 } from '@mui/material';
-import {
-    Close as CloseIcon,
-    Save as SaveIcon,
-} from '@mui/icons-material';
+import { IconX, IconSave } from './icons';
 import { apiKeyService } from '../services/api';
 
 interface SettingsDialogProps {
@@ -247,7 +244,7 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
                         },
                     }}
                 >
-                    <CloseIcon />
+                    <IconX className="ic-lg" />
                 </IconButton>
             </DialogTitle>
 
@@ -398,7 +395,7 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
                     onClick={handleSave}
                     variant="contained"
                     disabled={saving || loading}
-                    startIcon={saving ? <CircularProgress size={16} /> : <SaveIcon />}
+                    startIcon={saving ? <CircularProgress size={16} /> : <IconSave />}
                     sx={{
                         background: 'linear-gradient(135deg, #3FD5BA 0%, #1A8B7E 100%)',
                         boxShadow: '0 4px 14px 0 rgba(63, 213, 186, 0.4)',

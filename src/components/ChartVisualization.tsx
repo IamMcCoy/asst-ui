@@ -141,103 +141,54 @@ const ChartVisualization: React.FC<VisualizationInfo> = ({ viz_type, chart_confi
         const labels = query_result.map(item => String(item[x_axis]));
         const dataValues = query_result.map(item => Number(item[y_axis]));
 
+        // bar/line 공용 데이터·옵션 (borderWidth만 다름)
+        const xyData = (borderWidth: number) => ({
+            labels,
+            datasets: [{
+                label: y_axis,
+                data: dataValues,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth,
+            }]
+        });
+        const xyOptions = {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false },
+                title: { display: false },
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: !!x_label,
+                        text: x_label || x_axis,
+                        color: '#ffffff',
+                        font: { size: 14 }
+                    },
+                    ticks: { color: '#ffffff' },
+                    grid: { color: '#334155' }
+                },
+                y: {
+                    title: {
+                        display: !!y_label,
+                        text: y_label || y_axis,
+                        color: '#ffffff',
+                        font: { size: 14 }
+                    },
+                    beginAtZero: true,
+                    ticks: { color: '#ffffff' },
+                    grid: { color: '#334155' }
+                }
+            }
+        };
+
         switch (viz_type) {
-            case 'bar_chart': {
-                const barData = {
-                    labels,
-                    datasets: [{
-                        label: y_axis,
-                        data: dataValues,
-                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1,
-                    }]
-                } as ChartData<'bar'>;
-                const barOptions: ChartOptions<'bar'> = {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            display: false,
-                        },
-                        title: {
-                            display: false,
-                        },
-                    },
-                    scales: {
-                        x: {
-                            title: {
-                                display: !!x_label,
-                                text: x_label || x_axis,
-                                color: '#ffffff',
-                                font: { size: 14 }
-                            },
-                            ticks: { color: '#ffffff' },
-                            grid: { color: '#334155' }
-                        },
-                        y: {
-                            title: {
-                                display: !!y_label,
-                                text: y_label || y_axis,
-                                color: '#ffffff',
-                                font: { size: 14 }
-                            },
-                            beginAtZero: true,
-                            ticks: { color: '#ffffff' },
-                            grid: { color: '#334155' }
-                        }
-                    }
-                };
-                return <Bar data={barData} options={barOptions} />;
-            }
-            case 'line_chart': {
-                const lineData = {
-                    labels,
-                    datasets: [{
-                        label: y_axis,
-                        data: dataValues,
-                        backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 2,
-                    }]
-                } as ChartData<'line'>;
-                const lineOptions: ChartOptions<'line'> = {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            display: false,
-                        },
-                        title: {
-                            display: false,
-                        },
-                    },
-                    scales: {
-                        x: {
-                            title: {
-                                display: !!x_label,
-                                text: x_label || x_axis,
-                                color: '#ffffff',
-                                font: { size: 14 }
-                            },
-                            ticks: { color: '#ffffff' },
-                            grid: { color: '#334155' }
-                        },
-                        y: {
-                            title: {
-                                display: !!y_label,
-                                text: y_label || y_axis,
-                                color: '#ffffff',
-                                font: { size: 14 }
-                            },
-                            beginAtZero: true,
-                            ticks: { color: '#ffffff' },
-                            grid: { color: '#334155' }
-                        }
-                    }
-                };
-                return <Line data={lineData} options={lineOptions} />;
-            }
+            case 'bar_chart':
+                return <Bar data={xyData(1) as ChartData<'bar'>} options={xyOptions as ChartOptions<'bar'>} />;
+            case 'line_chart':
+                return <Line data={xyData(2) as ChartData<'line'>} options={xyOptions as ChartOptions<'line'>} />;
             case 'pie_chart': {
                 const pieData = {
                     labels,

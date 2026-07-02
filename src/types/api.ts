@@ -130,18 +130,6 @@ export interface ToolsResponse {
     tools: Record<string, Tool>;
 }
 
-export interface ToolNamesResponse {
-    tool_names: string[];
-}
-
-export interface ToolEnableRequest {
-    enabled: boolean;
-}
-
-export interface ToolBulkEnableRequest {
-    tools: Record<string, boolean>;
-}
-
 // Extra Info (시각화 정보) 관련 타입
 export interface ExtraInfo {
     viz_type?: 'table' | 'bar_chart' | 'line_chart' | 'pie_chart' | 'none';

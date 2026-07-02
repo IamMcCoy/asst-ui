@@ -9,7 +9,7 @@ import {
     Typography,
     CircularProgress,
 } from '@mui/material';
-import { AutoAwesome as ModelIcon, Check as CheckIcon } from '@mui/icons-material';
+import { IconSparkle, IconCheck } from './icons';
 
 interface ModelSelectorProps {
     models: string[];
@@ -57,7 +57,7 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
                 renderTrigger(handleClick, open, displayLabel)
             ) : (
                 <Chip
-                    icon={loading ? <CircularProgress size={14} /> : <ModelIcon />}
+                    icon={loading ? <CircularProgress size={14} /> : <IconSparkle />}
                     label={displayLabel}
                     onClick={handleClick}
                     disabled={disabled || loading}
@@ -100,7 +100,7 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
             >
                 <Box p={2} pb={1}>
                     <Box display="flex" alignItems="center" gap={1} mb={1}>
-                        <ModelIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                        <IconSparkle className="ic-lg" style={{ color: 'var(--accent)' }} />
                         <Typography variant="subtitle1" fontWeight={600}>
                             모델 선택
                         </Typography>
@@ -140,7 +140,7 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
                                 }
                             />
                             {selectedModel === model && (
-                                <CheckIcon sx={{ color: 'primary.main', fontSize: 18 }} />
+                                <IconCheck className="ic-lg" style={{ color: 'var(--accent)' }} />
                             )}
                         </ListItem>
                     ))}

@@ -29,6 +29,7 @@ import {
     IconStop,
     IconBrain,
     IconGauge,
+    IconHistory,
     IconTool,
     IconChevronDown,
     IconSparkle,
@@ -45,6 +46,7 @@ interface ComposerProps {
             thinkingMode: boolean;
             selectedModel: string | null;
             reasoningEffort: string | null;
+            historyMode: boolean;
             fileIds: string[];
         }
     ) => void;
@@ -88,6 +90,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
     const [message, setMessage] = useState('');
     const [thinkingMode, setThinkingMode] = useState(false);
     const [reasoningEffort, setReasoningEffort] = useState<string | null>(null);
+    const [historyMode, setHistoryMode] = useState(true);
     const [reasoningAnchor, setReasoningAnchor] = useState<HTMLElement | null>(null);
     const [uploadingNames, setUploadingNames] = useState<string[]>([]);
     const [pendingFiles, setPendingFiles] = useState<{ file: File; description: string }[]>([]);
@@ -122,6 +125,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
             thinkingMode: isGptOss ? false : thinkingMode,
             selectedModel,
             reasoningEffort: isGptOss ? reasoningEffort : null,
+            historyMode,
             fileIds: sessionFiles.map((f) => f.file_id).filter(Boolean),
         });
         setMessage('');
@@ -442,6 +446,23 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                             ))}
                         </MenuList>
                     </Popover>
+
+                    <span className="cmp-divider" />
+
+                    <Tooltip
+                        title={historyMode ? '이전 대화 맥락을 포함해 답변' : '이번 질문만 단독으로 답변'}
+                        arrow
+                    >
+                        <button
+                            type="button"
+                            className={'cmp-btn' + (historyMode ? ' on' : '')}
+                            onClick={() => setHistoryMode((v) => !v)}
+                            disabled={disabled}
+                        >
+                            <IconHistory className="ic-sm" />
+                            히스토리 모드
+                        </button>
+                    </Tooltip>
 
                     <ToolSelector
                         disabled={disabled}

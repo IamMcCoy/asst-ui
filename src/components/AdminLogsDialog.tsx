@@ -24,11 +24,7 @@ import {
     CircularProgress,
     Paper,
 } from '@mui/material';
-import {
-    Close as CloseIcon,
-    Refresh as RefreshIcon,
-    Search as SearchIcon,
-} from '@mui/icons-material';
+import { IconX, IconRefresh, IconSearch } from './icons';
 import { adminService } from '../services/api';
 import { AdminLogItem, AdminLogsQuery } from '../types/api';
 
@@ -194,7 +190,7 @@ export const AdminLogsDialog: FC<AdminLogsDialogProps> = ({ open, onClose }) => 
                     관리자 — 챗봇 이용 기록
                 </Typography>
                 <IconButton onClick={onClose} size="small">
-                    <CloseIcon />
+                    <IconX className="ic-lg" />
                 </IconButton>
             </DialogTitle>
 
@@ -321,13 +317,13 @@ export const AdminLogsDialog: FC<AdminLogsDialogProps> = ({ open, onClose }) => 
                                         borderRadius: 1.5,
                                     }}
                                 >
-                                    <RefreshIcon fontSize="small" />
+                                    <IconRefresh />
                                 </IconButton>
                             </span>
                         </Tooltip>
                         <Button
                             variant="contained"
-                            startIcon={<SearchIcon />}
+                            startIcon={<IconSearch />}
                             onClick={handleSearch}
                             disabled={loading}
                             disableElevation
@@ -501,7 +497,7 @@ export const AdminLogsDialog: FC<AdminLogsDialogProps> = ({ open, onClose }) => 
                                 상세
                             </Typography>
                             <IconButton size="small" onClick={() => setSelected(null)} aria-label="상세 닫기">
-                                <CloseIcon fontSize="small" />
+                                <IconX />
                             </IconButton>
                         </Box>
                         <Box sx={{ p: 2, overflow: 'auto', flex: 1, minHeight: 0 }}>

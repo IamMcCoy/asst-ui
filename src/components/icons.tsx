@@ -1,7 +1,6 @@
 /* SAUS 시안 아이콘 셋 — sample/icons.jsx 기반
  * 모든 아이콘 stroke-width 1.6, round join/cap 통일
- * 교체 대상 컴포넌트(Sidebar/Composer/Message/ToolCard)에서 사용
- * 유지 대상 컴포넌트는 계속 @mui/icons-material 사용
+ * 앱 전체 단일 아이콘 소스 (@mui/icons-material 제거됨)
  */
 import { FC, SVGProps } from 'react';
 
@@ -36,12 +35,6 @@ export const IconHistory: FC<IconProps> = ({ className, ...rest }) => (
 export const IconShield: FC<IconProps> = ({ className, ...rest }) => (
     <svg {...base(className)} {...rest}>
         <path d="M12 3l8 3v6c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V6l8-3z" />
-    </svg>
-);
-
-export const IconChevronUp: FC<IconProps> = ({ className, ...rest }) => (
-    <svg {...base(className)} {...rest}>
-        <path d="M6 15l6-6 6 6" />
     </svg>
 );
 
@@ -168,6 +161,28 @@ export const IconStar: FC<IconProps> = ({ className, ...rest }) => (
 export const IconStarFilled: FC<IconProps> = ({ className, ...rest }) => (
     <svg {...base(className)} {...rest}>
         <path d="M12 3l2.6 5.6 6.1.6-4.6 4.2 1.3 6-5.4-3.2L6.6 19.4l1.3-6L3.3 9.2l6.1-.6L12 3z" fill="currentColor" />
+    </svg>
+);
+
+export const IconRefresh: FC<IconProps> = ({ className, ...rest }) => (
+    <svg {...base(className)} {...rest}>
+        <path d="M21 12a9 9 0 1 1-3-6.7" />
+        <path d="M21 3v6h-6" />
+    </svg>
+);
+
+export const IconSearch: FC<IconProps> = ({ className, ...rest }) => (
+    <svg {...base(className)} {...rest}>
+        <circle cx="11" cy="11" r="7" />
+        <path d="M21 21l-4.35-4.35" />
+    </svg>
+);
+
+export const IconSave: FC<IconProps> = ({ className, ...rest }) => (
+    <svg {...base(className)} {...rest}>
+        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+        <path d="M17 21v-8H7v8" />
+        <path d="M7 3v5h8" />
     </svg>
 );
 

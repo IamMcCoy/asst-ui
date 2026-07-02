@@ -30,3 +30,6 @@ DEPLOYMENT.md
 
 .env
 
+
+# 이미지 tar 전송 산출물 (make save)
+*.tar

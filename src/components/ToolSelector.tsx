@@ -13,9 +13,7 @@ import {
     Button,
     CircularProgress,
 } from '@mui/material';
-import {
-    Build as BuildIcon,
-} from '@mui/icons-material';
+import { IconTool } from './icons';
 import { toolService } from '../services/api';
 import { Tool } from '../types/api';
 
@@ -105,7 +103,7 @@ export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false, renderTr
                 renderTrigger(handleClick, open)
             ) : (
                 <Chip
-                    icon={<BuildIcon />}
+                    icon={<IconTool />}
                     label="도구 설정"
                     onClick={handleClick}
                     disabled={disabled}
@@ -149,7 +147,7 @@ export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false, renderTr
             >
                 <Box p={2}>
                     <Box display="flex" alignItems="center" gap={1} mb={1}>
-                        <BuildIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                        <IconTool className="ic-lg" style={{ color: 'var(--accent)' }} />
                         <Typography variant="subtitle1" fontWeight={600}>
                             도구 설정
                         </Typography>

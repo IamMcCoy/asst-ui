@@ -2,6 +2,7 @@ import { FC, KeyboardEvent, useState } from 'react';
 import { Tooltip } from '@mui/material';
 import {
     IconShield,
+    IconGauge,
     IconSun,
     IconMoon,
     IconSettings,
@@ -21,6 +22,7 @@ interface TopbarProps {
     mode: 'light' | 'dark';
     onToggleMode: () => void;
     onOpenAdmin?: () => void;
+    onOpenAdminSettings?: () => void;
     onOpenSettings?: () => void;
     isAdmin: boolean;
     onRenameSession?: (sessionId: string, title: string) => void;
@@ -36,6 +38,7 @@ export const Topbar: FC<TopbarProps> = ({
     mode,
     onToggleMode,
     onOpenAdmin,
+    onOpenAdminSettings,
     onOpenSettings,
     isAdmin,
     onRenameSession,
@@ -171,6 +174,19 @@ export const Topbar: FC<TopbarProps> = ({
                         aria-label="관리자"
                     >
                         <IconShield />
+                    </button>
+                </Tooltip>
+            )}
+
+            {isAdmin && onOpenAdminSettings && (
+                <Tooltip title="관리자 — 운영 설정" arrow>
+                    <button
+                        type="button"
+                        className="topbar-btn"
+                        onClick={onOpenAdminSettings}
+                        aria-label="관리자 설정"
+                    >
+                        <IconGauge />
                     </button>
                 </Tooltip>
             )}
