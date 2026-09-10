@@ -1,73 +1,66 @@
 import { FC } from 'react';
-import { IconSparkle, IconGlobe, IconShield, IconFile, IconBrain } from './icons';
 import './EmptyState.css';
 
-interface SuggestionCard {
-    icon: React.ReactNode;
+interface Starter {
+    n: string;
     title: string;
-    description: string;
+    sub: string;
+    tool: string;
     prompt: string;
 }
 
-const SUGGESTIONS: SuggestionCard[] = [
-    {
-        icon: <IconGlobe className="ic-sm" />,
-        title: 'IP 주소 평판 확인',
-        description: '의심스러운 IP의 위협 평판과 위치 분석',
-        prompt: '123.1.2.33 IP 주소를 분석해줘',
-    },
-    {
-        icon: <IconShield className="ic-sm" />,
-        title: '최신 CTI 조회',
-        description: '특정 CVE 취약점 상세 정보',
-        prompt: 'CVE-2026-1731 취약점 정보 알려줘',
-    },
-    {
-        icon: <IconFile className="ic-sm" />,
-        title: '업로드 파일 요약',
-        description: '세션에 올린 보고서 핵심 요약',
-        prompt: '업로드된 파일을 요약해줘',
-    },
-    {
-        icon: <IconBrain className="ic-sm" />,
-        title: '웹 로그 패턴 분석',
-        description: 'Apache access.log 의심 트래픽 탐지',
-        prompt: '최근 로그에서 의심스러운 패턴이 있는지 분석해줘',
-    },
+const STARTERS: Starter[] = [
+    { n: '01', title: 'IP 주소 평판 확인', sub: '의심스러운 IP의 위협 평판과 위치', tool: 'analyze_ip', prompt: '123.1.2.33 IP 주소를 분석해줘' },
+    { n: '02', title: '최신 CTI 조회', sub: '특정 CVE 취약점 상세 정보', tool: 'search_cti', prompt: 'CVE-2026-1731 취약점 정보 알려줘' },
+    { n: '03', title: 'XOAR 데이터 조회', sub: '티켓 · 인시던트 통계를 자연어로 질의', tool: 'text2sql', prompt: '위험도가 low인 티켓의 수를 알려주세요' },
+    { n: '04', title: '웹 로그 패턴 분석', sub: 'Apache access.log 의심 트래픽 탐지', tool: 'text2seql', prompt: '지난 24시간 동안 가장 빈번하게 발생한 공격 유형(attack_nm) 상위 10개를 알려줘.' },
 ];
 
 interface EmptyStateProps {
     onSelectPrompt?: (prompt: string) => void;
     disabled?: boolean;
+    modelName?: string | null;
 }
 
-export const EmptyState: FC<EmptyStateProps> = ({ onSelectPrompt, disabled = false }) => {
+const today = () => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}`;
+};
+
+// 시안의 Home — 좌측 헤드라인 + 우측 "시작하기" 번호 리스트
+export const EmptyState: FC<EmptyStateProps> = ({ onSelectPrompt, disabled = false, modelName }) => {
     return (
-        <div className="empty">
-            <div className="empty-mark">
-                <IconSparkle />
+        <section className="home">
+            <div className="home-grid">
+                <div className="home-hero">
+                    <div className="home-status">
+                        <span className="home-status-dot" />
+                        {today()} · 에이전트 대기{modelName ? ` · ${modelName}` : ''}
+                    </div>
+                    <h1>무엇을<br />분석해 드릴까요<span className="q">?</span></h1>
+                    <p>IP · 도메인 · CVE · 파일 · 로그를 한 곳에서. 질문하면 에이전트가 계획을 세우고, 도구를 실행하고, 근거와 함께 답합니다.</p>
+                </div>
+                <div className="home-starters">
+                    <div className="home-starters-head mono-label">시작하기</div>
+                    {STARTERS.map((s) => (
+                        <button
+                            type="button"
+                            className="starter"
+                            key={s.n}
+                            onClick={() => onSelectPrompt?.(s.prompt)}
+                            disabled={disabled || !onSelectPrompt}
+                        >
+                            <span className="starter-n">{s.n}</span>
+                            <span className="starter-body">
+                                <span className="starter-title">{s.title}</span>
+                                <span className="starter-sub">{s.sub}</span>
+                            </span>
+                            <span className="starter-tool">{s.tool}</span>
+                        </button>
+                    ))}
+                </div>
             </div>
-            <h1>무엇을 분석해 드릴까요?</h1>
-            <p>
-                IP·도메인·CVE·파일·로그를 한 곳에서. 자연어로 물어보면 적절한 도구를 자동으로 골라 분석합니다.
-            </p>
-            <div className="suggest">
-                {SUGGESTIONS.map((s) => (
-                    <button
-                        type="button"
-                        className="suggest-card"
-                        key={s.title}
-                        onClick={() => onSelectPrompt?.(s.prompt)}
-                        disabled={disabled || !onSelectPrompt}
-                    >
-                        {s.icon}
-                        <div>
-                            <div className="t">{s.title}</div>
-                            <div className="d">{s.description}</div>
-                        </div>
-                    </button>
-                ))}
-            </div>
-        </div>
+        </section>
     );
 };

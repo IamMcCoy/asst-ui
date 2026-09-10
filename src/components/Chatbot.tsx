@@ -1,5 +1,5 @@
 import { FC, useState, useEffect, useRef, useMemo, useCallback, DragEvent } from 'react';
-import { Box, Typography, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
+import { Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import { SessionSidebar } from './SessionSidebar';
 import { ChatMessage } from './ChatMessage';
 import { Composer, ComposerHandle } from './Composer';
@@ -10,9 +10,9 @@ import { SettingsDialog } from './SettingsDialog';
 import { AdminLogsDialog } from './AdminLogsDialog';
 import { AdminSettingsDialog } from './AdminSettingsDialog';
 import { DocPanel, DocRef } from './DocPanel';
-import { Session, Message, ChatRequest, ExtraInfoMap, ExtraInfo, UploadedFile } from '../types/api';
+import { Session, Message, ChatRequest, ExtraInfoMap, ExtraInfo, UploadedFile, AnalysisArtifact } from '../types/api';
 import { chatService, sessionService, feedbackService, modelService, fileService, isAdminToken, parseExtraInfo, StreamHandlers } from '../services/api';
-import { IconSparkle } from './icons';
+import './Chatbot.css';
 import { useColorMode } from '../App';
 import { useFavoriteSessions } from '../hooks/useFavoriteSessions';
 
@@ -64,8 +64,8 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
     const [adminOpen, setAdminOpen] = useState(false);
     const [adminSettingsOpen, setAdminSettingsOpen] = useState(false);
     const [uploadNotice, setUploadNotice] = useState<string | null>(null);
-    // 우측 문서 패널 — 업로드 파일 탭은 sessionFiles에서 파생, 매뉴얼 링크는 별도 1개 탭
-    const [manualDoc, setManualDoc] = useState<DocRef | null>(null);
+    // 우측 아티팩트 패널 — 업로드 파일 탭은 sessionFiles에서 파생, 매뉴얼 링크(1개)와 열어본 분석 결과 파일은 extraDocs
+    const [extraDocs, setExtraDocs] = useState<DocRef[]>([]);
     const [activeDocKey, setActiveDocKey] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const messagesContainerRef = useRef<HTMLDivElement | null>(null);
@@ -117,8 +117,8 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
         } else {
             setSessionFiles([]);
         }
-        // 세션이 바뀌면 문서 패널은 닫는다 (탭이 세션 파일에 종속)
-        setManualDoc(null);
+        // 세션이 바뀌면 아티팩트 패널은 닫는다 (탭이 세션 파일에 종속)
+        setExtraDocs([]);
         setActiveDocKey(null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentSessionId]);
@@ -133,17 +133,26 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                   description: f.description,
               }))
             : [];
-        return manualDoc ? [...uploads, manualDoc] : uploads;
-    }, [sessionFiles, manualDoc, userId, currentSessionId]);
+        return [...uploads, ...extraDocs];
+    }, [sessionFiles, extraDocs, userId, currentSessionId]);
 
     const handleOpenSessionFile = (fileId: string) => setActiveDocKey(fileId);
+
+    // 같은 key의 탭은 교체, 없으면 추가 후 활성화
+    const openExtraDoc = (doc: DocRef) => {
+        setExtraDocs((prev) => [...prev.filter((d) => d.key !== doc.key), doc]);
+        setActiveDocKey(doc.key);
+    };
 
     // 답변 속 매뉴얼 링크(…/x.pdf#page=N) → 매뉴얼 탭 1개를 교체하며 패널에서 열기
     const handleOpenDocument = (href: string) => {
         const title = decodeURIComponent(href.split('#')[0].split('/').pop() || '매뉴얼');
-        setManualDoc({ key: 'manual', title, url: href, kind: 'manual' });
-        setActiveDocKey('manual');
+        openExtraDoc({ key: 'manual', title, url: href, kind: 'manual' });
     };
+
+    // 분석 결과 파일(analyze_ip / analyze_weblog) → 패널에서 열기. 다른 origin이면 패널이 다운로드 폴백을 보여준다
+    const handleOpenArtifact = (a: AnalysisArtifact) =>
+        openExtraDoc({ key: a.download_url, title: a.filename, url: a.download_url, kind: 'artifact' });
 
     const handleDeleteSessionFile = async (fileId: string) => {
         if (!currentSessionId) return;
@@ -337,7 +346,9 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
         // 세션 진입 직후엔 즉시 점프(스크롤 애니메이션 없음), 그 외엔 smooth
         const behavior: ScrollBehavior = instantScrollRef.current ? 'auto' : 'smooth';
         programmaticScrollRef.current = true;
-        messagesEndRef.current?.scrollIntoView({ behavior });
+        // scrollIntoView는 overflow:hidden 조상(.app)까지 밀어 올리므로 스크롤 컨테이너만 직접 이동
+        const el = messagesContainerRef.current;
+        if (el) el.scrollTo({ top: el.scrollHeight, behavior });
         if (instantScrollRef.current) instantScrollRef.current = false;
         // smooth 스크롤 완료까지 여유를 두고 플래그 해제
         window.setTimeout(() => {
@@ -455,8 +466,8 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                         model: msg.metadata.model ?? null,
                     };
                 }
-                // user 메시지의 경우 기존 message_id 사용
-                return msg;
+                // user 메시지의 경우 기존 message_id 사용 — 시각은 metadata 폴백
+                return { ...msg, timestamp: msg.timestamp || msg.metadata?.timestamp };
             });
 
             normalizedMessages.forEach((msg, idx) => {
@@ -932,32 +943,32 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
         }
     };
 
+    const composer = (
+        <Composer
+            ref={composerRef}
+            onSendMessage={handleSendMessage}
+            disabled={loading || !currentSessionId}
+            models={models}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+            userId={userId}
+            sessionId={currentSessionId}
+            onFilesChanged={handleSessionFilesChanged}
+            sessionFiles={sessionFiles}
+            onDeleteSessionFile={handleDeleteSessionFile}
+            isRunning={!!activeTaskId}
+            onCancel={handleCancelCurrentTask}
+            onUploadError={setUploadNotice}
+            onOpenSessionFile={handleOpenSessionFile}
+        />
+    );
+
+    const isHome = !currentSessionId || (messages.length === 0 && !loading);
+
     return (
-        <Box
-            sx={{
-                display: 'grid',
-                gridTemplateColumns: 'auto 1fr auto',
-                height: '100vh',
-                width: '100vw',
-                overflow: 'hidden',
-                position: 'relative',
-                background:
-                    'radial-gradient(1200px 600px at 30% -10%, var(--accent-soft) 0%, transparent 55%), var(--bg)',
-                '&::before': {
-                    content: '""',
-                    position: 'fixed',
-                    inset: 0,
-                    backgroundImage: 'radial-gradient(var(--bg-grid) 1px, transparent 1px)',
-                    backgroundSize: '22px 22px',
-                    pointerEvents: 'none',
-                    maskImage:
-                        'radial-gradient(ellipse at center, #000 50%, transparent 90%)',
-                    WebkitMaskImage:
-                        'radial-gradient(ellipse at center, #000 50%, transparent 90%)',
-                    zIndex: 0,
-                },
-            }}
-        >
+        <div className="app">
+            <div className="app-glow" aria-hidden />
+
             <SessionSidebar
                 sessions={sessions}
                 currentSessionId={currentSessionId}
@@ -971,11 +982,8 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                 onToggleFavorite={toggleFavorite}
             />
 
-            <Box
-                flex={1}
-                display="flex"
-                flexDirection="column"
-                sx={{ height: '100vh', overflow: 'hidden', minWidth: 0, position: 'relative' }}
+            <main
+                className="main"
                 onDragEnter={handleAreaDragEnter}
                 onDragOver={handleAreaDragOver}
                 onDragLeave={handleAreaDragLeave}
@@ -996,184 +1004,74 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                     isFavorite={currentSessionId ? isFavorite(currentSessionId) : false}
                     onToggleFavorite={toggleFavorite}
                 />
-                <Box sx={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    py: 3,
-                    px: 4,
-                    maxWidth: 960,
-                    width: '100%',
-                    mx: 'auto',
-                    overflow: 'hidden',
-                }}>
+
+                <div className="main-body">
                     {error && (
-                        <Alert
-                            severity="error"
-                            onClose={() => setError(null)}
-                            sx={{
-                                mb: 2,
-                                mx: 4,
-                                mt: 3,
-                                borderRadius: '12px',
-                                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)',
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                            }}
-                        >
-                            {error}
-                        </Alert>
+                        <div className="chat-alerts">
+                            <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>
+                        </div>
                     )}
 
                     {/* SSE task 오류 — context 초과는 알림창(하단)에서 처리, 그 외는 인라인 배너 */}
                     {chatError && chatError.sid === currentSessionId
                         && chatError.code !== 'context_length_exceeded' && (
-                        <Alert
-                            severity="error"
-                            onClose={() => setChatError(null)}
-                            action={
-                                chatError.retryable ? (
-                                    <Button color="inherit" size="small" onClick={handleRetryChat}>
-                                        재시도
-                                    </Button>
-                                ) : undefined
-                            }
-                            sx={{
-                                mb: 2,
-                                mx: 4,
-                                mt: 3,
-                                borderRadius: '12px',
-                                whiteSpace: 'pre-line',
-                                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)',
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                            }}
-                        >
-                            {chatError.message}
-                            {!chatError.retryable && (
-                                <Typography variant="caption" sx={{ display: 'block', mt: 0.5, opacity: 0.85 }}>
-                                    질문을 수정해 다시 시도해 주세요.
-                                </Typography>
-                            )}
-                        </Alert>
+                        <div className="chat-alerts">
+                            <Alert
+                                severity="error"
+                                onClose={() => setChatError(null)}
+                                action={
+                                    chatError.retryable ? (
+                                        <Button color="inherit" size="small" onClick={handleRetryChat}>재시도</Button>
+                                    ) : undefined
+                                }
+                            >
+                                {chatError.message}
+                                {!chatError.retryable && (
+                                    <span style={{ display: 'block', marginTop: 4, fontSize: 12, opacity: 0.85 }}>
+                                        질문을 수정해 다시 시도해 주세요.
+                                    </span>
+                                )}
+                            </Alert>
+                        </div>
                     )}
 
-                    {!currentSessionId ? (
-                        <Box
-                            flex={1}
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
-                            flexDirection="column"
-                        >
-                            <Box
-                                sx={{
-                                    fontSize: 80,
-                                    mb: 3,
-                                    background: 'linear-gradient(135deg, #3FD5BA 0%, #1A8B7E 100%)',
-                                    backgroundClip: 'text',
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                }}
-                            >
-                                💬
-                            </Box>
-                            <Typography
-                                variant="h4"
-                                sx={{
-                                    fontWeight: 700,
-                                    mb: 2,
-                                    background: 'linear-gradient(135deg, #3FD5BA 0%, #1A8B7E 100%)',
-                                    backgroundClip: 'text',
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    textAlign: 'center',
-                                }}
-                            >
-                                SAUS와 대화 시작하기
-                            </Typography>
-                            <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center' }}>
-                                왼쪽 사이드바에서 '새 대화' 버튼을 클릭하여 시작하세요
-                            </Typography>
-                        </Box>
+                    {isHome ? (
+                        <EmptyState
+                            disabled={loading || !currentSessionId}
+                            modelName={selectedModel}
+                            onSelectPrompt={(prompt) =>
+                                handleSendMessage(prompt, {
+                                    thinkingMode: false,
+                                    selectedModel,
+                                    reasoningEffort: null,
+                                    historyMode: true,
+                                    fileIds: sessionFiles.map((f) => f.file_id).filter(Boolean),
+                                })
+                            }
+                        />
                     ) : (
-                        <>
-                            {messages.length === 0 && !loading ? (
-                                <Box
-                                    flex={1}
-                                    display="flex"
-                                    flexDirection="column"
-                                    justifyContent="center"
-                                    gap={2}
-                                >
-                                    <EmptyState
-                                        disabled={loading}
-                                        onSelectPrompt={(prompt) =>
-                                            handleSendMessage(prompt, {
-                                                thinkingMode: false,
-                                                selectedModel,
-                                                reasoningEffort: null,
-                                                historyMode: true,
-                                                fileIds: sessionFiles.map((f) => f.file_id).filter(Boolean),
-                                            })
-                                        }
+                        <div
+                            ref={messagesContainerRef}
+                            className="chat-scroll"
+                            onScroll={handleScroll}
+                            onWheel={handleUserScrollIntent}
+                            onTouchStart={handleUserScrollIntent}
+                            onKeyDown={handleUserScrollIntent}
+                        >
+                            <div className="chat-thread">
+                                {messages.map((message, index) => (
+                                    <ChatMessage
+                                        key={message.message_id || `msg-${index}`}
+                                        message={message}
+                                        onFeedback={handleFeedback}
+                                        extraInfo={extraInfoMap[String(message.message_id)]}
+                                        onOpenDocument={handleOpenDocument}
+                                        onOpenArtifact={handleOpenArtifact}
                                     />
-                                    <Box width="100%">
-                                        <Composer
-                                            ref={composerRef}
-                                            onSendMessage={handleSendMessage}
-                                            disabled={loading}
-                                            models={models}
-                                            selectedModel={selectedModel}
-                                            onModelChange={setSelectedModel}
-                                            userId={userId}
-                                            sessionId={currentSessionId}
-                                            onFilesChanged={handleSessionFilesChanged}
-                                            sessionFiles={sessionFiles}
-                                            onDeleteSessionFile={handleDeleteSessionFile}
-                                            isRunning={!!activeTaskId}
-                                            onCancel={handleCancelCurrentTask}
-                                            onUploadError={setUploadNotice}
-                                            onOpenSessionFile={handleOpenSessionFile}
-                                        />
-                                    </Box>
-                                </Box>
-                            ) : (
-                                <>
-                                    <Box
-                                        ref={messagesContainerRef}
-                                        flex={1}
-                                        overflow="auto"
-                                        py={2}
-                                        mb={2}
-                                        sx={{
-                                            minHeight: 0,
-                                            overflowY: 'auto',
-                                            overflowX: 'hidden'
-                                        }}
-                                        onScroll={handleScroll}
-                                        onWheel={handleUserScrollIntent}
-                                        onTouchStart={handleUserScrollIntent}
-                                        onKeyDown={handleUserScrollIntent}
-                                    >
-                                        {messages.map((message, index) => (
-                                            <ChatMessage
-                                                key={message.message_id || `msg-${index}`}
-                                                message={message}
-                                                onFeedback={handleFeedback}
-                                                extraInfo={extraInfoMap[String(message.message_id)]}
-                                                userInitial={(userId || 'U').trim().charAt(0).toUpperCase() || 'U'}
-                                                onOpenDocument={handleOpenDocument}
-                                            />
-                                        ))}
+                                ))}
 
                                 {progressStage && progressMessage && !streamingMessage && (
-                                    <div className="msg bot">
-                                        <div className="msg-avatar bot">
-                                            <IconSparkle />
-                                        </div>
-                                        <div className="msg-body">
-                                            <ProgressIndicator stage={progressStage} message={progressMessage} />
-                                        </div>
-                                    </div>
+                                    <ProgressIndicator stage={progressStage} message={progressMessage} />
                                 )}
 
                                 {streamingMessage && (
@@ -1187,144 +1085,44 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                                         onFeedback={handleFeedback}
                                         streaming
                                         extraInfo={pendingExtraInfo || undefined}
-                                        userInitial={(userId || 'U').trim().charAt(0).toUpperCase() || 'U'}
                                         onOpenDocument={handleOpenDocument}
                                     />
                                 )}
 
                                 {loading && !streamingMessage && !progressStage && (
-                                    <div className="msg bot">
-                                        <div className="msg-avatar bot">
-                                            <IconSparkle />
-                                        </div>
-                                        <div className="msg-body">
-                                            <ProgressIndicator stage="generating_answer" />
-                                        </div>
-                                    </div>
+                                    <ProgressIndicator stage="generating_answer" />
                                 )}
 
                                 <div ref={messagesEndRef} />
-                            </Box>
-
-                            <Box >
-                                <Composer
-                                    ref={composerRef}
-                                    onSendMessage={handleSendMessage}
-                                    disabled={loading}
-                                    models={models}
-                                    selectedModel={selectedModel}
-                                    onModelChange={setSelectedModel}
-                                    userId={userId}
-                                    sessionId={currentSessionId}
-                                    onFilesChanged={handleSessionFilesChanged}
-                                    sessionFiles={sessionFiles}
-                                    onDeleteSessionFile={handleDeleteSessionFile}
-                                    isRunning={!!activeTaskId}
-                                    onCancel={handleCancelCurrentTask}
-                                    onUploadError={setUploadNotice}
-                                            onOpenSessionFile={handleOpenSessionFile}
-                                />
-                            </Box>
-                        </>
+                            </div>
+                        </div>
                     )}
-                </>
-                )}
-                </Box>
+                </div>
+
+                <footer className="composer-footer">{composer}</footer>
 
                 {/* 채팅 영역 전체 드래그앤드롭 오버레이 */}
                 {dropOver && (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            inset: 16,
-                            top: 68,
-                            zIndex: 20,
-                            border: '2px dashed',
-                            borderColor: 'primary.main',
-                            borderRadius: '14px',
-                            bgcolor: 'rgba(63, 213, 186, 0.08)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 1,
-                            color: 'primary.main',
-                            fontSize: 15,
-                            fontWeight: 600,
-                            pointerEvents: 'none',
-                            backdropFilter: 'blur(2px)',
-                        }}
-                    >
-                        <Box sx={{ fontSize: 36 }}>📎</Box>
+                    <div className="drop-overlay">
+                        <span className="mono-label">UPLOAD</span>
                         파일을 여기에 놓아 업로드
-                    </Box>
+                    </div>
                 )}
 
-                {/* 메인 영역 내부 상단 중앙 toast — 사이드바 폭과 무관하게 컨텐츠 컬럼 중앙 정렬 */}
+                {/* 메인 영역 내부 상단 중앙 toast */}
                 {uploadNotice && (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            top: 68,
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            zIndex: 10,
-                            minWidth: 280,
-                            maxWidth: 'min(560px, 90%)',
-                        }}
-                    >
-                        <Alert
-                            severity="error"
-                            variant="standard"
-                            onClose={() => setUploadNotice(null)}
-                            sx={(theme) => ({
-                                borderRadius: '10px',
-                                fontSize: 13.5,
-                                fontWeight: 500,
-                                boxShadow:
-                                    theme.palette.mode === 'dark'
-                                        ? '0 8px 28px rgba(0,0,0,0.45)'
-                                        : '0 6px 24px rgba(220, 38, 38, 0.18)',
-                                border: '1px solid',
-                                borderColor:
-                                    theme.palette.mode === 'dark'
-                                        ? 'rgba(248, 113, 113, 0.55)'
-                                        : 'rgba(220, 38, 38, 0.35)',
-                                bgcolor:
-                                    theme.palette.mode === 'dark'
-                                        ? '#3b0a0a'
-                                        : '#fee2e2',
-                                backdropFilter: 'none',
-                                color:
-                                    theme.palette.mode === 'dark'
-                                        ? '#fecaca'
-                                        : '#991b1b',
-                                '& .MuiAlert-icon': {
-                                    color:
-                                        theme.palette.mode === 'dark'
-                                            ? '#f87171'
-                                            : '#dc2626',
-                                },
-                                '& .MuiAlert-action .MuiIconButton-root': {
-                                    color:
-                                        theme.palette.mode === 'dark'
-                                            ? '#fca5a5'
-                                            : '#991b1b',
-                                },
-                            })}
-                        >
-                            {uploadNotice}
-                        </Alert>
-                    </Box>
+                    <div className="upload-toast">
+                        <Alert severity="error" onClose={() => setUploadNotice(null)}>{uploadNotice}</Alert>
+                    </div>
                 )}
-            </Box>
+            </main>
 
             {activeDocKey && panelDocs.length > 0 && (
                 <DocPanel
                     docs={panelDocs}
                     activeKey={activeDocKey}
                     onSelect={setActiveDocKey}
-                    onClose={() => { setActiveDocKey(null); setManualDoc(null); }}
+                    onClose={() => { setActiveDocKey(null); setExtraDocs([]); }}
                 />
             )}
 
@@ -1349,6 +1147,6 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
             <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} userId={userId} />
             <AdminLogsDialog open={adminOpen} onClose={() => setAdminOpen(false)} />
             <AdminSettingsDialog open={adminSettingsOpen} onClose={() => setAdminSettingsOpen(false)} />
-        </Box>
+        </div>
     );
 };

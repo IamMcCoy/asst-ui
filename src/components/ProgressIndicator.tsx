@@ -1,10 +1,9 @@
 import { FC } from 'react';
-import { Fade } from '@mui/material';
 import './ProgressIndicator.css';
 
 interface ProgressIndicatorProps {
     stage: string;
-    message?: string; // optional로 변경
+    message?: string;
 }
 
 const stageLabels: Record<string, string> = {
@@ -37,17 +36,19 @@ const stageLabels: Record<string, string> = {
     tool_text2seql_shovel_pending: 'SeQL 쿼리를 실행 중이에요...',
 };
 
+// 시안의 streaming 블록 — 좌측 "AGENT · 실행 중" 펄스 라벨 + 현재 단계 텍스트 + 깜빡이는 커서
 export const ProgressIndicator: FC<ProgressIndicatorProps> = ({ stage }) => {
     const label = stageLabels[stage] || stage;
-
     return (
-        <Fade in timeout={300}>
-            <div className="progress-indicator" role="status" aria-live="polite">
-                <svg className="vertex-loader-svg" viewBox="0 0 16 16" aria-hidden="true">
-                    <path className="vertex-path" d="M8 15 L1 8 L8 1 L15 8" />
-                </svg>
-                <span className="progress-label">{label}</span>
+        <div className="progress-row" role="status" aria-live="polite">
+            <div className="progress-side">AGENT · 실행 중</div>
+            <div className="progress-body">
+                <span className="progress-stage mono-label">{stage}</span>
+                <span className="progress-label">
+                    {label}
+                    <span className="progress-caret" aria-hidden />
+                </span>
             </div>
-        </Fade>
+        </div>
     );
 };

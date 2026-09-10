@@ -1,18 +1,6 @@
 import { FC, KeyboardEvent, useState } from 'react';
 import { Tooltip } from '@mui/material';
-import {
-    IconShield,
-    IconGauge,
-    IconSun,
-    IconMoon,
-    IconSettings,
-    IconEdit,
-    IconTrash,
-    IconStar,
-    IconStarFilled,
-    IconCheck,
-    IconX,
-} from './icons';
+import { IconEdit, IconTrash, IconStar, IconStarFilled, IconCheck, IconX } from './icons';
 import './Topbar.css';
 
 interface TopbarProps {
@@ -31,6 +19,7 @@ interface TopbarProps {
     onToggleFavorite?: (sessionId: string) => void;
 }
 
+// 시안의 Header — 모노 브레드크럼(SAUS / 제목 / SESSION 배지) + 모델 표시 + 텍스트 버튼 + 테마 토글
 export const Topbar: FC<TopbarProps> = ({
     sessionId,
     sessionTitle,
@@ -49,48 +38,29 @@ export const Topbar: FC<TopbarProps> = ({
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState('');
 
-    const hasSession = !!sessionId;
-
     const startRename = () => {
         setDraft(sessionTitle ?? '');
         setEditing(true);
     };
-
     const commitRename = () => {
         const next = draft.trim();
-        if (sessionId && next && next !== sessionTitle) {
-            onRenameSession?.(sessionId, next);
-        }
+        if (sessionId && next && next !== sessionTitle) onRenameSession?.(sessionId, next);
         setEditing(false);
     };
-
     const cancelRename = () => {
         setEditing(false);
         setDraft('');
     };
-
     const handleEditKey = (e: KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            commitRename();
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            cancelRename();
-        }
-    };
-
-    const handleDelete = () => {
-        if (sessionId) onDeleteSession?.(sessionId);
-    };
-
-    const handleToggleFavorite = () => {
-        if (sessionId) onToggleFavorite?.(sessionId);
+        if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+        else if (e.key === 'Escape') { e.preventDefault(); cancelRename(); }
     };
 
     return (
-        <div className="topbar">
-            <div className="topbar-title">
-                <span className="crumb">SAUS</span>
+        <header className="topbar">
+            <div className="topbar-crumbs">
+                <span>SAUS</span>
+                <span className="sep">/</span>
                 {editing ? (
                     <span className="topbar-title-edit">
                         <input
@@ -113,15 +83,17 @@ export const Topbar: FC<TopbarProps> = ({
                         {sessionTitle || '새 대화'}
                     </span>
                 )}
-
-                {hasSession && !editing && (
+                {sessionId && (
+                    <span className="topbar-session">SESSION {sessionId.slice(0, 8)}</span>
+                )}
+                {sessionId && !editing && (
                     <span className="topbar-title-actions">
                         {onToggleFavorite && (
                             <Tooltip title={isFavorite ? '즐겨찾기 해제' : '즐겨찾기'} arrow>
                                 <button
                                     type="button"
                                     className={'topbar-icon-btn' + (isFavorite ? ' is-on' : '')}
-                                    onClick={handleToggleFavorite}
+                                    onClick={() => onToggleFavorite(sessionId)}
                                     aria-label={isFavorite ? '즐겨찾기 해제' : '즐겨찾기'}
                                 >
                                     {isFavorite ? <IconStarFilled className="ic-sm" /> : <IconStar className="ic-sm" />}
@@ -130,24 +102,14 @@ export const Topbar: FC<TopbarProps> = ({
                         )}
                         {onRenameSession && (
                             <Tooltip title="제목 수정" arrow>
-                                <button
-                                    type="button"
-                                    className="topbar-icon-btn"
-                                    onClick={startRename}
-                                    aria-label="제목 수정"
-                                >
+                                <button type="button" className="topbar-icon-btn" onClick={startRename} aria-label="제목 수정">
                                     <IconEdit className="ic-sm" />
                                 </button>
                             </Tooltip>
                         )}
                         {onDeleteSession && (
                             <Tooltip title="세션 삭제" arrow>
-                                <button
-                                    type="button"
-                                    className="topbar-icon-btn danger"
-                                    onClick={handleDelete}
-                                    aria-label="세션 삭제"
-                                >
+                                <button type="button" className="topbar-icon-btn danger" onClick={() => onDeleteSession(sessionId)} aria-label="세션 삭제">
                                     <IconTrash className="ic-sm" />
                                 </button>
                             </Tooltip>
@@ -156,64 +118,32 @@ export const Topbar: FC<TopbarProps> = ({
                 )}
             </div>
 
-            <div className="topbar-spacer" />
-
-            {modelName && (
-                <div className="topbar-pill" title="현재 모델">
-                    <span className="dot-live" />
-                    {modelName}
-                </div>
-            )}
-
-            {isAdmin && onOpenAdmin && (
-                <Tooltip title="관리자 — 챗봇 이용 기록" arrow>
-                    <button
-                        type="button"
-                        className="topbar-btn"
-                        onClick={onOpenAdmin}
-                        aria-label="관리자"
-                    >
-                        <IconShield />
-                    </button>
-                </Tooltip>
-            )}
-
-            {isAdmin && onOpenAdminSettings && (
-                <Tooltip title="관리자 — 운영 설정" arrow>
-                    <button
-                        type="button"
-                        className="topbar-btn"
-                        onClick={onOpenAdminSettings}
-                        aria-label="관리자 설정"
-                    >
-                        <IconGauge />
-                    </button>
-                </Tooltip>
-            )}
-
-            <Tooltip title={mode === 'dark' ? '라이트 모드' : '다크 모드'} arrow>
+            <div className="topbar-right">
+                {modelName && (
+                    <span className="topbar-model" title="현재 모델">
+                        <span className="dot-live" />
+                        {modelName}
+                    </span>
+                )}
+                {isAdmin && onOpenAdmin && (
+                    <button type="button" className="topbar-link" onClick={onOpenAdmin}>관리자</button>
+                )}
+                {isAdmin && onOpenAdminSettings && (
+                    <button type="button" className="topbar-link" onClick={onOpenAdminSettings}>운영 설정</button>
+                )}
+                {onOpenSettings && (
+                    <button type="button" className="topbar-link" onClick={onOpenSettings} title="외부 인텔리전스 API 키">TI 연동</button>
+                )}
                 <button
                     type="button"
-                    className="topbar-btn"
+                    className="topbar-theme"
                     onClick={onToggleMode}
                     aria-label="테마 전환"
+                    title={mode === 'dark' ? '라이트 모드' : '다크 모드'}
                 >
-                    {mode === 'dark' ? <IconSun /> : <IconMoon />}
+                    <span />
                 </button>
-            </Tooltip>
-
-            {onOpenSettings && (
-                <Tooltip title="설정" arrow>
-                    <button
-                        type="button"
-                        className="topbar-btn"
-                        onClick={onOpenSettings}
-                        aria-label="설정"
-                    >
-                        <IconSettings />
-                    </button>
-                </Tooltip>
-            )}
-        </div>
+            </div>
+        </header>
     );
 };

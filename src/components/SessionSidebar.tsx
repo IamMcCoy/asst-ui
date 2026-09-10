@@ -1,16 +1,15 @@
-import { FC, useState, KeyboardEvent, MouseEvent } from 'react';
-import { Tooltip } from '@mui/material';
+import { FC, useState, useMemo, useEffect, useRef, KeyboardEvent, MouseEvent } from 'react';
 import { Session } from '../types/api';
 import {
-    IconMenu,
-    IconPlus,
-    IconHistory,
     IconEdit,
     IconTrash,
     IconCheck,
     IconX,
     IconStar,
     IconStarFilled,
+    IconMenu,
+    IconPlus,
+    IconSearch,
 } from './icons';
 import './SessionSidebar.css';
 
@@ -29,20 +28,21 @@ interface SessionSidebarProps {
     onToggleFavorite?: (sessionId: string) => void;
 }
 
-// 세션 업데이트 시각을 "오늘/어제/M/D/YYYY/M/D" 형식으로 압축 표시
-const formatRelativeDate = (iso?: string): string => {
-    if (!iso) return '';
+const APP_VERSION = process.env.REACT_APP_VERSION || 'v1.5';
+const COLLAPSED_KEY = 'saus-sb-collapsed';
+
+// 세션 갱신일 → 그룹 라벨 ("오늘 / 어제 / 9월 8일 / 2025년 12월 1일"). 날짜가 없으면 방금 만든 세션 → 오늘
+const groupLabel = (iso?: string): string => {
+    if (!iso) return '오늘';
     const date = new Date(iso);
-    if (isNaN(date.getTime())) return '';
+    if (isNaN(date.getTime())) return '오늘';
     const now = new Date();
     const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     const dayDiff = Math.floor((startOfDay(now) - startOfDay(date)) / 86400000);
-    if (dayDiff === 0) return '오늘';
+    if (dayDiff <= 0) return '오늘';
     if (dayDiff === 1) return '어제';
-    if (date.getFullYear() === now.getFullYear()) {
-        return `${date.getMonth() + 1}/${date.getDate()}`;
-    }
-    return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+    if (date.getFullYear() === now.getFullYear()) return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+    return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
 };
 
 export const SessionSidebar: FC<SessionSidebarProps> = ({
@@ -59,7 +59,28 @@ export const SessionSidebar: FC<SessionSidebarProps> = ({
 }) => {
     const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
     const [editTitle, setEditTitle] = useState('');
-    const [collapsed, setCollapsed] = useState(false);
+    const [query, setQuery] = useState('');
+    const searchRef = useRef<HTMLInputElement | null>(null);
+    const [collapsed, setCollapsed] = useState<boolean>(() => {
+        try { return localStorage.getItem(COLLAPSED_KEY) === '1'; } catch { return false; }
+    });
+    const toggleCollapsed = () => {
+        setCollapsed((v) => {
+            try { localStorage.setItem(COLLAPSED_KEY, v ? '0' : '1'); } catch { /* ignore */ }
+            return !v;
+        });
+    };
+
+    // ⌘K / Ctrl+K → 검색, ⌘N / Ctrl+N → 새 대화 (시안의 단축키 힌트와 일치)
+    useEffect(() => {
+        const onKey = (e: globalThis.KeyboardEvent) => {
+            if (!(e.metaKey || e.ctrlKey)) return;
+            if (e.key === 'k') { e.preventDefault(); searchRef.current?.focus(); }
+            else if (e.key === 'n') { e.preventDefault(); onCreateSession(); }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [onCreateSession]);
 
     const handleStartEdit = (e: MouseEvent, session: Session) => {
         e.stopPropagation();
@@ -69,9 +90,7 @@ export const SessionSidebar: FC<SessionSidebarProps> = ({
 
     const handleSaveEdit = (sessionId: string) => {
         const next = editTitle.trim();
-        if (next) {
-            onUpdateTitle(sessionId, next);
-        }
+        if (next) onUpdateTitle(sessionId, next);
         setEditingSessionId(null);
         setEditTitle('');
     };
@@ -82,43 +101,35 @@ export const SessionSidebar: FC<SessionSidebarProps> = ({
     };
 
     const handleEditKey = (e: KeyboardEvent<HTMLInputElement>, sessionId: string) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            handleSaveEdit(sessionId);
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            handleCancelEdit();
-        }
-    };
-
-    const handleDelete = (e: MouseEvent, sessionId: string) => {
-        e.stopPropagation();
-        onDeleteSession(sessionId);
-    };
-
-    const handleToggleFavorite = (e: MouseEvent, sessionId: string) => {
-        e.stopPropagation();
-        onToggleFavorite?.(sessionId);
+        if (e.key === 'Enter') { e.preventDefault(); handleSaveEdit(sessionId); }
+        else if (e.key === 'Escape') { e.preventDefault(); handleCancelEdit(); }
     };
 
     const userInitial = (userId || 'U').trim().charAt(0).toUpperCase() || 'U';
 
-    // 즐겨찾기/일반 세션 분리 — 즐겨찾기는 원래 정렬 유지
-    const favoriteSessions = isFavorite
-        ? sessions.filter((s) => isFavorite(s.session_id))
-        : [];
-    const regularSessions = isFavorite
-        ? sessions.filter((s) => !isFavorite(s.session_id))
-        : sessions;
+    // 검색 필터 → 즐겨찾기 그룹 + 날짜 그룹 (정렬은 원본 순서 유지)
+    const groups = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        const filtered = q ? sessions.filter((s) => (s.title || '').toLowerCase().includes(q)) : sessions;
+        const result: { label: string; items: Session[] }[] = [];
+        const fav = isFavorite ? filtered.filter((s) => isFavorite(s.session_id)) : [];
+        if (fav.length) result.push({ label: '즐겨찾기', items: fav });
+        const rest = isFavorite ? filtered.filter((s) => !isFavorite(s.session_id)) : filtered;
+        for (const s of rest) {
+            const label = groupLabel(s.metadata?.updated_at || s.metadata?.created_at);
+            const last = result[result.length - 1];
+            if (last && last.label === label && last.label !== '즐겨찾기') last.items.push(s);
+            else result.push({ label, items: [s] });
+        }
+        return result;
+    }, [sessions, query, isFavorite]);
 
     const renderSession = (session: Session) => {
         const isActive = currentSessionId === session.session_id;
-        const isEditing = editingSessionId === session.session_id;
-        const isRunning =
-            !!activeTaskMap[session.session_id] || !!session.active_task_id;
+        const isRunning = !!activeTaskMap[session.session_id] || !!session.active_task_id;
         const favored = isFavorite ? isFavorite(session.session_id) : false;
 
-        if (isEditing) {
+        if (editingSessionId === session.session_id) {
             return (
                 <div className="sb-item-edit" key={session.session_id}>
                     <input
@@ -127,12 +138,7 @@ export const SessionSidebar: FC<SessionSidebarProps> = ({
                         onChange={(e) => setEditTitle(e.target.value)}
                         onKeyDown={(e) => handleEditKey(e, session.session_id)}
                     />
-                    <button
-                        type="button"
-                        className="confirm"
-                        onClick={() => handleSaveEdit(session.session_id)}
-                        aria-label="저장"
-                    >
+                    <button type="button" className="confirm" onClick={() => handleSaveEdit(session.session_id)} aria-label="저장">
                         <IconCheck className="ic-sm" />
                     </button>
                     <button type="button" onClick={handleCancelEdit} aria-label="취소">
@@ -142,149 +148,108 @@ export const SessionSidebar: FC<SessionSidebarProps> = ({
             );
         }
 
-        const handleItemKey = (e: KeyboardEvent<HTMLDivElement>) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onSelectSession(session.session_id);
-            }
-        };
-
-        const item = (
+        return (
             <div
                 key={session.session_id}
                 role="button"
                 tabIndex={0}
                 className={'sb-item' + (isActive ? ' active' : '')}
                 onClick={() => onSelectSession(session.session_id)}
-                onKeyDown={handleItemKey}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectSession(session.session_id); }
+                }}
                 title={session.title ?? '제목 없음'}
             >
-                {collapsed ? (
-                    <>
-                        {favored ? <IconStarFilled className="ic-sm sb-star" /> : <IconHistory className="ic-sm" />}
-                        {isRunning && <span className="sb-dot" aria-label="답변 중" />}
-                    </>
-                ) : (
-                    <>
-                        <span className="title">
-                            <span className="title-text">{session.title || '제목 없음'}</span>
-                            {isRunning && (
-                                <span className="sb-dot" aria-label="답변 중" title="답변 중" />
-                            )}
-                        </span>
-                        <span className="actions">
-                            {onToggleFavorite && (
-                                <button
-                                    type="button"
-                                    className={favored ? 'fav active' : 'fav'}
-                                    onClick={(e) => handleToggleFavorite(e, session.session_id)}
-                                    aria-label={favored ? '즐겨찾기 해제' : '즐겨찾기'}
-                                >
-                                    {favored ? <IconStarFilled className="ic-sm" /> : <IconStar className="ic-sm" />}
-                                </button>
-                            )}
-                            <button
-                                type="button"
-                                onClick={(e) => handleStartEdit(e, session)}
-                                aria-label="이름 변경"
-                            >
-                                <IconEdit className="ic-sm" />
-                            </button>
-                            <button
-                                type="button"
-                                className="danger"
-                                onClick={(e) => handleDelete(e, session.session_id)}
-                                aria-label="삭제"
-                            >
-                                <IconTrash className="ic-sm" />
-                            </button>
-                        </span>
-                        <span className="date">
-                            {formatRelativeDate(session.metadata?.updated_at)}
-                        </span>
-                    </>
-                )}
+                <span className="title-text">{session.title || '제목 없음'}</span>
+                {isRunning && <span className="sb-dot" aria-label="답변 중" title="답변 중" />}
+                <span className="actions">
+                    {onToggleFavorite && (
+                        <button
+                            type="button"
+                            className={favored ? 'fav active' : 'fav'}
+                            onClick={(e) => { e.stopPropagation(); onToggleFavorite(session.session_id); }}
+                            aria-label={favored ? '즐겨찾기 해제' : '즐겨찾기'}
+                        >
+                            {favored ? <IconStarFilled className="ic-sm" /> : <IconStar className="ic-sm" />}
+                        </button>
+                    )}
+                    <button type="button" onClick={(e) => handleStartEdit(e, session)} aria-label="이름 변경">
+                        <IconEdit className="ic-sm" />
+                    </button>
+                    <button
+                        type="button"
+                        className="danger"
+                        onClick={(e) => { e.stopPropagation(); onDeleteSession(session.session_id); }}
+                        aria-label="삭제"
+                    >
+                        <IconTrash className="ic-sm" />
+                    </button>
+                </span>
             </div>
         );
-
-        if (collapsed) {
-            return (
-                <Tooltip
-                    key={session.session_id}
-                    title={session.title ?? '제목 없음'}
-                    arrow
-                    placement="right"
-                >
-                    {item}
-                </Tooltip>
-            );
-        }
-        return item;
     };
 
+    const toggleBtn = (
+        <button
+            type="button"
+            className="sb-toggle"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
+            title={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
+        >
+            <IconMenu />
+        </button>
+    );
+
+    // 접힘: 같은 DOM을 유지하고 폭만 애니메이션. 텍스트 영역(.sb-x)은 페이드 아웃 후 숨김, + 타일만 노출
     return (
         <aside className={'sb' + (collapsed ? ' collapsed' : '')}>
             <div className="sb-head">
-                {!collapsed && (
-                    <div className="sb-logo">
-                        <div className="sb-logo-mark" />
-                        <span>SAUS</span>
-                    </div>
-                )}
-                <Tooltip title={collapsed ? '사이드바 펼치기' : '사이드바 접기'} arrow placement="right">
-                    <button
-                        type="button"
-                        className="sb-toggle"
-                        onClick={() => setCollapsed(!collapsed)}
-                        aria-label={collapsed ? '사이드바 펼치기' : '사이드바 접기'}
-                    >
-                        <IconMenu />
-                    </button>
-                </Tooltip>
+                <span className="sb-logo sb-x">SAUS</span>
+                <span className="sb-version sb-x">{APP_VERSION}</span>
+                {toggleBtn}
             </div>
 
-            <button type="button" className="sb-new" onClick={onCreateSession} title="새 대화">
+            <button type="button" className="sb-tile sb-tile-new" onClick={onCreateSession} title="새 대화 (⌘N)" aria-label="새 대화" tabIndex={collapsed ? 0 : -1}>
                 <IconPlus className="ic-sm" />
-                <span className="lbl">새 대화</span>
             </button>
 
-            <div className="sb-list">
-                {sessions.length === 0 ? (
-                    !collapsed && <div className="sb-empty">세션이 없습니다</div>
-                ) : (
-                    <>
-                        {favoriteSessions.length > 0 && (
-                            <>
-                                {!collapsed && <div className="sb-section">즐겨찾기</div>}
-                                {favoriteSessions.map(renderSession)}
-                            </>
-                        )}
-                        {regularSessions.length > 0 && (
-                            <>
-                                {!collapsed && <div className="sb-section">최근 대화</div>}
-                                {regularSessions.map(renderSession)}
-                            </>
-                        )}
-                    </>
-                )}
+            <div className="sb-top sb-x">
+                <button type="button" className="sb-new" onClick={onCreateSession} title="새 대화 (⌘N)">
+                    <span>새 대화</span>
+                    <span className="kbd">⌘N</span>
+                </button>
+
+                <div className="sb-search">
+                    <IconSearch className="ic-sm sb-search-ic" />
+                    <input
+                        ref={searchRef}
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="대화 검색"
+                        aria-label="대화 검색"
+                    />
+                    <span className="kbd">⌘K</span>
+                </div>
+            </div>
+
+            <div className="sb-list sb-x">
+                {sessions.length === 0 && <div className="sb-empty">세션이 없습니다</div>}
+                {sessions.length > 0 && groups.length === 0 && <div className="sb-empty">일치하는 대화가 없습니다.</div>}
+                {groups.map((g) => (
+                    <div className="sb-group" key={g.label}>
+                        <div className="sb-section mono-label">{g.label}</div>
+                        {g.items.map(renderSession)}
+                    </div>
+                ))}
             </div>
 
             <div className="sb-foot">
-                {collapsed ? (
-                    <Tooltip title={`사용자: ${userId}`} arrow placement="right">
-                        <div className="sb-user" role="presentation">
-                            <div className="sb-avatar">{userInitial}</div>
-                        </div>
-                    </Tooltip>
-                ) : (
-                    <div className="sb-user" role="presentation">
-                        <div className="sb-avatar">{userInitial}</div>
-                        <div className="who">
-                            <span className="name">사용자</span>
-                            <span className="sub">{userId}</span>
-                        </div>
-                    </div>
-                )}
+                <div className="sb-avatar" title={userId}>{userInitial}</div>
+                <div className="who sb-x">
+                    <span className="name">{userId}</span>
+                    <span className="sub">seculayer</span>
+                </div>
             </div>
         </aside>
     );

@@ -26,15 +26,11 @@ import { UploadedFile } from '../types/api';
 import { formatFileSize } from '../utils/format';
 import {
     IconPaperclip,
-    IconSend,
     IconStop,
     IconBrain,
     IconGauge,
     IconHistory,
     IconTool,
-    IconChevronDown,
-    IconSparkle,
-    IconInfo,
     IconFile,
     IconX,
 } from './icons';
@@ -119,7 +115,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
         const el = textareaRef.current;
         if (!el) return;
         el.style.height = 'auto';
-        const next = Math.min(Math.max(el.scrollHeight, 48), 220);
+        const next = Math.min(Math.max(el.scrollHeight, 50), 220);
         el.style.height = next + 'px';
         el.style.overflowY = el.scrollHeight > 220 ? 'auto' : 'hidden';
     }, [message]);
@@ -294,14 +290,14 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="무엇이든 물어보세요 — IP 분석, CTI 조회, 파일 요약…"
+                        placeholder="무엇이든 물어보세요 — IP 분석, CTI 조회, 로그 요약…"
                         disabled={disabled}
-                        rows={1}
+                        rows={2}
                     />
                 </div>
 
                 {onDeleteSessionFile && sessionFiles.length > 0 && (
-                    <div style={{ padding: '0 12px' }}>
+                    <div style={{ padding: '0 20px' }}>
                         <SessionFiles files={sessionFiles} onDelete={onDeleteSessionFile} onOpen={onOpenSessionFile} />
                     </div>
                 )}
@@ -350,9 +346,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                                     disabled={disabled}
                                     title="모델 선택"
                                 >
-                                    <IconSparkle className="ic-sm" />
-                                    {label}
-                                    <IconChevronDown className="ic-sm" />
+                                    {label} ▾
                                 </button>
                             )}
                         />
@@ -447,7 +441,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                             disabled={disabled}
                         >
                             <IconHistory className="ic-sm" />
-                            히스토리 모드
+                            히스토리
                         </button>
                     </Tooltip>
 
@@ -462,7 +456,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                                 title="도구 설정"
                             >
                                 <IconTool className="ic-sm" />
-                                도구 설정
+                                도구
                             </button>
                         )}
                     />
@@ -488,7 +482,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                             aria-label="보내기"
                             title="보내기 (Enter)"
                         >
-                            <IconSend />
+                            <svg viewBox="0 0 24 24" aria-hidden><path d="M12 19V5M5 12l7-7 7 7" /></svg>
                         </button>
                     )}
                 </div>
@@ -503,8 +497,8 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
             </div>
 
             <div className="composer-hint">
-                <IconInfo className="ic" />
-                분석 결과는 참고용입니다. 실제 보안 조치는 전문가와 상의해 주세요.
+                <span>분석 결과는 참고용입니다 · 실제 조치는 전문가 검토 후 진행하세요</span>
+                <span>Enter 전송 · Shift+Enter 줄바꿈</span>
             </div>
 
             <Dialog

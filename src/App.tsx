@@ -11,7 +11,7 @@ interface ColorModeContextValue {
     toggle: () => void;
 }
 const ColorModeContext = createContext<ColorModeContextValue>({
-    mode: 'light',
+    mode: 'dark',
     toggle: () => undefined,
 });
 export const useColorMode = () => useContext(ColorModeContext);
@@ -24,24 +24,24 @@ const buildTheme = (mode: Mode) =>
             mode,
             primary:
                 mode === 'dark'
-                    ? { main: '#2dd4bf', light: '#5fdfc9', dark: '#0d9488', contrastText: '#0f2e2a' }
-                    : { main: '#0d9488', light: '#2dd4bf', dark: '#0f766e', contrastText: '#ffffff' },
+                    ? { main: '#5fd4b8', light: '#8ae3cd', dark: '#3cb99b', contrastText: '#07110e' }
+                    : { main: '#0f7a63', light: '#5fd4b8', dark: '#0a5c4a', contrastText: '#ffffff' },
             secondary:
                 mode === 'dark'
-                    ? { main: '#f4a48b', light: '#f7baa6', dark: '#c8553d' }
-                    : { main: '#c8553d', light: '#f4a48b', dark: '#a04330' },
+                    ? { main: '#d9b36a', light: '#e6c98e', dark: '#b8892f' }
+                    : { main: '#b8892f', light: '#d9b36a', dark: '#8f6a1f' },
             background:
                 mode === 'dark'
-                    ? { default: '#0a0d0d', paper: '#111615' }
-                    : { default: '#f8f8f6', paper: '#ffffff' },
+                    ? { default: '#0b0f0e', paper: '#111715' }
+                    : { default: '#f4f3ee', paper: '#fbfaf7' },
             text:
                 mode === 'dark'
-                    ? { primary: '#e7ece9', secondary: '#aab3b0', disabled: '#4a5250' }
-                    : { primary: '#14201d', secondary: '#4b5754', disabled: '#a8b0ad' },
-            divider: mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)',
-            error: { main: mode === 'dark' ? '#fb7185' : '#dc2626' },
-            warning: { main: mode === 'dark' ? '#f0b86c' : '#c97a23' },
-            success: { main: mode === 'dark' ? '#4ade80' : '#16a34a' },
+                    ? { primary: '#e9ede9', secondary: '#a2aba5', disabled: '#4a524e' }
+                    : { primary: '#151f1b', secondary: '#56615c', disabled: '#b3bab6' },
+            divider: mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(20,30,26,0.09)',
+            error: { main: mode === 'dark' ? '#e5766a' : '#c9483a' },
+            warning: { main: mode === 'dark' ? '#d9b36a' : '#b8892f' },
+            success: { main: mode === 'dark' ? '#5fd4b8' : '#0f7a63' },
         },
         typography: {
             fontFamily: [
@@ -105,7 +105,7 @@ const App: FC = () => {
 
     const [mode, setMode] = useState<Mode>(() => {
         const saved = (typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null) as Mode | null;
-        return saved === 'light' || saved === 'dark' ? saved : 'light';
+        return saved === 'light' || saved === 'dark' ? saved : 'dark';
     });
 
     useEffect(() => {

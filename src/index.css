@@ -7,7 +7,7 @@
 
 :root {
   --font-sans: "Pretendard Variable", Pretendard, ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   --r-xs: 4px;
   --r-sm: 6px;
@@ -16,68 +16,71 @@
   --r-xl: 16px;
   --r-pill: 999px;
 
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px -8px rgba(0, 0, 0, 0.10);
-  --shadow-pop: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 16px 48px -12px rgba(0, 0, 0, 0.40);
+  --shadow-card: 0 30px 60px -30px rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 40px 100px -30px rgba(0, 0, 0, 0.7);
+  --ease-out: cubic-bezier(.2, .7, .2, 1);
 }
 
-/* LIGHT (기본) */
-body.theme-light {
-  --bg: #f8f8f6;
-  --bg-grid: rgba(0, 0, 0, 0.025);
-  --surface: #ffffff;
-  --surface-2: #f3f3f0;
-  --surface-3: #ebebe7;
-  --hover: rgba(0, 0, 0, 0.04);
-  --border: rgba(0, 0, 0, 0.07);
-  --border-strong: rgba(0, 0, 0, 0.12);
-  --text: #14201d;
-  --text-2: #4b5754;
-  --text-3: #7d8784;
-  --text-4: #a8b0ad;
-
-  --accent: #0d9488;
-  --accent-soft: rgba(13, 148, 136, 0.10);
-  --accent-soft-2: rgba(13, 148, 136, 0.18);
-  --accent-ink: #ffffff;
-
-  --user: #c8553d;
-  --user-soft: rgba(200, 85, 61, 0.08);
-
-  --warn: #c97a23;
-  --ok: #16a34a;
-  --danger: #dc2626;
-
-  color-scheme: light;
-}
-
-/* DARK */
+/* DARK (기본) — 디자인 시안(SAUS Assistant.dc.html) 토큰 */
 body.theme-dark {
-  --bg: #0a0d0d;
-  --bg-grid: rgba(255, 255, 255, 0.022);
-  --surface: #111615;
-  --surface-2: #161c1b;
-  --surface-3: #1c2322;
+  --bg: #0b0f0e;
+  --bg-2: rgba(16, 22, 20, 0.5);
+  --surface: #111715;
+  --surface-2: #161d1b;
+  --surface-3: #1c2422;
   --hover: rgba(255, 255, 255, 0.04);
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.10);
-  --text: #e7ece9;
-  --text-2: #aab3b0;
-  --text-3: #707977;
-  --text-4: #4a5250;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --text: #e9ede9;
+  --text-2: #a2aba5;
+  --text-3: #6a736e;
+  --text-4: #4a524e;
 
-  --accent: #2dd4bf;
-  --accent-soft: rgba(45, 212, 191, 0.12);
-  --accent-soft-2: rgba(45, 212, 191, 0.20);
-  --accent-ink: #0f2e2a;
+  --accent: #5fd4b8;
+  --accent-soft: rgba(95, 212, 184, 0.12);
+  --accent-soft-2: rgba(95, 212, 184, 0.22);
+  --accent-ink: #07110e;
+  --glow: rgba(95, 212, 184, 0.16);
 
-  --user: #f4a48b;
-  --user-soft: rgba(244, 164, 139, 0.10);
+  --user: #e9ede9;
+  --user-soft: rgba(255, 255, 255, 0.06);
 
-  --warn: #f0b86c;
-  --ok: #4ade80;
-  --danger: #fb7185;
+  --warn: #d9b36a;
+  --ok: #5fd4b8;
+  --danger: #e5766a;
 
   color-scheme: dark;
+}
+
+/* LIGHT */
+body.theme-light {
+  --bg: #f4f3ee;
+  --bg-2: #faf9f5;
+  --surface: #fbfaf7;
+  --surface-2: #f1f0ea;
+  --surface-3: #e8e7e0;
+  --hover: rgba(20, 30, 26, 0.05);
+  --border: rgba(20, 30, 26, 0.09);
+  --border-strong: rgba(20, 30, 26, 0.16);
+  --text: #151f1b;
+  --text-2: #56615c;
+  --text-3: #8b948f;
+  --text-4: #b3bab6;
+
+  --accent: #0f7a63;
+  --accent-soft: rgba(15, 122, 99, 0.1);
+  --accent-soft-2: rgba(15, 122, 99, 0.2);
+  --accent-ink: #ffffff;
+  --glow: rgba(15, 122, 99, 0.12);
+
+  --user: #151f1b;
+  --user-soft: rgba(20, 30, 26, 0.05);
+
+  --warn: #b8892f;
+  --ok: #0f7a63;
+  --danger: #c9483a;
+
+  color-scheme: light;
 }
 
 /* density */
@@ -111,7 +114,9 @@ body {
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.5;
-  letter-spacing: -0.005em;
+  word-break: keep-all;
+  background: var(--bg);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -120,6 +125,24 @@ body {
 ::selection {
   background: var(--accent-soft-2);
   color: var(--text);
+}
+
+/* 공용 애니메이션 (시안 기준) */
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@keyframes drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(6%, 4%) scale(1.15); } }
+@keyframes pulse { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+
+/* 모노 라벨 — 시안의 Geist Mono 소문자 트래킹 라벨 */
+.mono-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  color: var(--text-3);
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
 
 code,

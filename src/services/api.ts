@@ -603,12 +603,16 @@ const isPdfBytes = (buf: ArrayBuffer): boolean => {
 // - origin 단위 allowlist: API 호스트(Bearer 첨부) 또는 UI 자기 origin(매뉴얼 정적 파일)만 허용.
 //   문자열 prefix 비교는 "http://api.example.com.evil" 류로 우회되므로 URL.origin으로 비교한다.
 // - 응답 Content-Type을 믿지 않고 호출부가 지정한 MIME으로 재포장 → blob: URL을 iframe에 넣어도 HTML로 해석될 수 없다.
+// - anonymous: 분석 결과 파일(artifacts)처럼 인증 없이 공개 URL로 서빙되는 문서. 어떤 origin이든 Bearer를 붙이지 않고 GET한다
+//   (파일명의 128비트 난수가 접근 통제, 서버는 CORS * 허용). URL은 parseExtraInfo가 http(s)만 통과시킨다.
 export const docService = {
-    async fetchBlob(url: string, mimeType: string = 'application/octet-stream'): Promise<Blob> {
+    async fetchBlob(url: string, mimeType: string = 'application/octet-stream', opts: { anonymous?: boolean } = {}): Promise<Blob> {
         const target = new URL(url, window.location.href);
         const apiOrigin = new URL(BASE_URL).origin;
         let headers: Record<string, string> = {};
-        if (target.origin === apiOrigin) {
+        if (opts.anonymous) {
+            headers = {};
+        } else if (target.origin === apiOrigin) {
             headers = authHeaders();
         } else if (target.origin !== window.location.origin) {
             throw new Error('허용되지 않은 문서 위치입니다.');

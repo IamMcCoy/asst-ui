@@ -152,18 +152,14 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
                     borderBottom: '1px solid rgba(63, 213, 186, 0.1)',
                 }}
             >
-                <Typography
-                    variant="h6"
-                    sx={{
-                        fontWeight: 700,
-                        background: 'linear-gradient(135deg, #3FD5BA 0%, #1A8B7E 100%)',
-                        backgroundClip: 'text',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                    }}
-                >
-                    설정
-                </Typography>
+                <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: '-0.02em' }}>
+                        외부 인텔리전스 연동
+                    </Typography>
+                    <Typography className="mono-label" sx={{ display: 'block', mt: 0.5 }}>
+                        TI 소스 API 키
+                    </Typography>
+                </Box>
                 <IconButton
                     onClick={handleClose}
                     disabled={saving}
@@ -212,10 +208,10 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
 
                         <Box>
                             <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary', fontWeight: 600 }}>
-                                API 키 관리
+                                TI 소스 API 키
                             </Typography>
                             <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                                IP 분석 등 외부 인텔리전스 서비스의 API 키를 등록하세요. 등록된 키를 빈 값으로 저장하면 삭제됩니다.
+                                IP 분석에 사용하는 외부 위협 인텔리전스 소스의 API 키를 등록하세요. 등록된 키를 빈 값으로 저장하면 삭제됩니다.
                             </Typography>
                         </Box>
 

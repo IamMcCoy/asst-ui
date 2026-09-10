@@ -1,51 +1,49 @@
-/* Progress 표시 — Claude Desktop 스타일 인라인 상태 라인
- * 작은 로더(favicon 모티프 vertex 선) + 회색 텍스트, 카드/보더 없음
- */
+/* Progress — 시안의 streaming 블록 (메시지 그리드와 동일한 120px 메타 컬럼) */
 
-.progress-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 0;
-  width: fit-content;
+.progress-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  animation: fade .4s ease both;
 }
-
-.vertex-loader-svg {
-  width: 22px;
-  height: 22px;
-  flex: none;
-  display: block;
-  overflow: visible;
+.progress-side {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  animation: pulse 1.6s ease-in-out infinite;
 }
-
-/* 6시 → 9시 → 12시 → 3시 — 16x16 viewBox 기준 총 길이 ≈ 29.7
- * (SVG 자체는 22x22로 렌더하지만 viewBox는 그대로 16x16 → 비례 확대) */
-.vertex-path {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 30;
-  stroke-dashoffset: 30;
-  animation: vertex-draw 1.6s ease-in-out infinite;
-}
-
-@keyframes vertex-draw {
-  0%   { stroke-dashoffset: 30; }
-  50%  { stroke-dashoffset: 0;  }
-  100% { stroke-dashoffset: 30; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .vertex-path {
-    animation-duration: 5s;
+/* ChatMessage.css의 .msg와 동일한 넓은 폭 레이아웃 */
+@container chat (min-width: 1000px) {
+  .progress-row {
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 24px;
+    margin-left: -144px;
+  }
+  .progress-side {
+    padding-top: 6px;
   }
 }
-
+.progress-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.progress-stage {
+  font-size: 10px;
+}
 .progress-label {
-  font-size: 16px;
-  font-weight: 400;
-  color: var(--text-3);
-  line-height: 1.45;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+.progress-caret {
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  margin-left: 8px;
+  vertical-align: -2px;
+  background: var(--accent);
+  animation: blink 1s steps(2) infinite;
 }

@@ -1,97 +1,130 @@
-/* EmptyState — sample/styles.css 기반
- * 새 대화 진입 시 표시: 액센트 마크 + 헤드라인 + 설명 + 4개 suggestion 카드
+/* EmptyState(Home) — 시안의 Home 섹션
+ * 좌: 상태 라인 + 대형 헤드라인 + 설명, 우: "시작하기" 번호 리스트
  */
 
-.empty {
-  max-width: 720px;
+.home {
+  overflow: auto;
+  padding: 0 40px;
+  min-height: 0;
+}
+.home-grid {
+  max-width: 880px;
   margin: 0 auto;
-  padding: 6vh 8px 0;
+  padding: 11vh 0 40px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 64px;
+  align-items: start;
+  animation: rise .7s var(--ease-out) both;
+}
+@media (max-width: 960px) {
+  .home-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 40px;
+    padding-top: 6vh;
+  }
+}
+
+.home-hero {
   display: flex;
   flex-direction: column;
+  gap: 28px;
+}
+.home-status {
+  display: flex;
   align-items: center;
-  text-align: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--text-3);
 }
-
-.empty-mark {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, var(--accent), color-mix(in oklch, var(--accent), #000 40%));
-  display: grid;
-  place-items: center;
-  color: var(--accent-ink);
-  box-shadow: 0 8px 32px -8px var(--accent-soft-2),
-              inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  margin-bottom: 18px;
+.home-status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2.4s ease-in-out infinite;
 }
-.empty-mark svg {
-  width: 26px;
-  height: 26px;
-  stroke-width: 1.8;
-}
-
-.empty h1 {
-  margin: 0 0 6px;
-  font-size: 24px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+.home-hero h1 {
+  margin: 0;
+  font-weight: 500;
+  font-size: clamp(38px, 4.6vw, 58px);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  text-wrap: pretty;
   color: var(--text);
 }
-
-.empty p {
+.home-hero h1 .q {
+  color: var(--accent);
+}
+.home-hero p {
   margin: 0;
+  max-width: 420px;
   color: var(--text-2);
-  font-size: 14.5px;
-  max-width: 480px;
-  line-height: 1.55;
+  font-size: 15px;
+  line-height: 1.7;
+  font-weight: 300;
+  text-wrap: pretty;
 }
 
-.suggest {
-  margin-top: 28px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  width: 100%;
-  max-width: 600px;
-}
-
-.suggest-card {
-  text-align: left;
-  padding: 14px 16px;
-  border-radius: var(--r-md);
-  background: var(--surface);
-  border: 1px solid var(--border);
+.home-starters {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  padding-top: 34px;
+}
+@media (max-width: 960px) {
+  .home-starters { padding-top: 0; }
+}
+.home-starters-head {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-strong);
+}
+.starter {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: baseline;
   gap: 12px;
-  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  padding: 16px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
   font-family: inherit;
+  cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  transition: background 120ms, border-color 120ms;
-  color: inherit;
+  transition: padding-left .3s var(--ease-out);
 }
-.suggest-card:hover {
-  background: var(--surface-2);
-  border-color: var(--border-strong);
+.starter:hover:not(:disabled) {
+  padding-left: 12px;
 }
-.suggest-card:disabled {
-  opacity: 0.5;
+.starter:disabled {
+  opacity: .5;
   cursor: not-allowed;
 }
-.suggest-card .ic {
-  color: var(--accent);
-  margin-top: 2px;
-  flex: none;
+.starter-n {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
 }
-.suggest-card .t {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 3px;
+.starter-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
-.suggest-card .d {
+.starter-title {
+  font-size: 14.5px;
+}
+.starter-sub {
   font-size: 12.5px;
   color: var(--text-3);
-  line-height: 1.45;
+  font-weight: 300;
+}
+.starter-tool {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--accent);
 }

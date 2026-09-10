@@ -1,21 +1,58 @@
-/* DocPanel — 채팅 우측 문서 뷰어 (업로드 원본 PDF / 매뉴얼 링크 공용) */
+/* DocPanel — 우측 아티팩트 패널 (업로드 원본 / 매뉴얼 PDF / 분석 결과 파일 공용)
+ * 좌측 모서리 드래그로 폭 조절, 폭은 localStorage에 기억
+ */
 
 .doc-panel {
-  width: min(46vw, 620px);
   height: 100vh;
+  max-width: 70vw;
   display: flex;
   flex-direction: column;
   border-left: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--bg-2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   position: relative;
-  z-index: 1;
+  z-index: 2;
+  flex: none;
+  animation: fade .4s ease both;
+}
+
+.doc-resize {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  z-index: 3;
+}
+.doc-resize::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: transparent;
+  transition: background .2s;
+}
+.doc-resize:hover::after,
+body.is-resizing .doc-resize::after {
+  background: var(--accent);
+}
+body.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+body.is-resizing iframe {
+  pointer-events: none;
 }
 
 .doc-tabs {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 8px 8px 0;
+  padding: 14px 14px 0;
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
   flex: none;
@@ -29,10 +66,10 @@
   align-items: center;
   gap: 6px;
   max-width: 200px;
-  padding: 6px 10px;
-  border: 1px solid transparent;
-  border-bottom: 0;
-  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  padding: 7px 10px 9px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  margin-bottom: -1px;
   background: none;
   color: var(--text-3);
   font-size: 12.5px;
@@ -41,26 +78,25 @@
   white-space: nowrap;
   appearance: none;
   -webkit-appearance: none;
+  transition: color .2s, border-color .2s;
 }
 .doc-tab:hover {
-  background: var(--hover);
   color: var(--text);
 }
 .doc-tab.active {
-  background: var(--surface-2);
-  border-color: var(--border);
   color: var(--text);
-  font-weight: 600;
+  border-bottom-color: var(--accent);
 }
 .doc-tab-title {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .doc-tab-badge {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 5px;
-  border-radius: var(--r-xs);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
   background: var(--accent-soft);
   color: var(--accent);
 }
@@ -76,7 +112,7 @@
   color: var(--text-3);
   cursor: pointer;
   flex: none;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   appearance: none;
   -webkit-appearance: none;
 }
@@ -85,10 +121,33 @@
   color: var(--text);
 }
 
+.doc-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.doc-meta-title {
+  font-size: 14px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.doc-meta-desc {
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 300;
+  line-height: 1.5;
+}
+
 .doc-body {
   flex: 1;
   min-height: 0;
-  background: var(--surface-2);
+  background: var(--surface);
+  overflow: auto;
 }
 .doc-frame {
   width: 100%;
@@ -96,10 +155,35 @@
   border: 0;
   display: block;
 }
-.doc-empty {
-  height: 100%;
+.doc-image-wrap {
+  min-height: 100%;
   display: grid;
   place-items: center;
+  padding: 16px;
+}
+.doc-image {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.doc-text {
+  margin: 0;
+  padding: 18px 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.doc-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   color: var(--text-3);
   font-size: 13px;
   padding: 24px;
@@ -107,4 +191,21 @@
 }
 .doc-error {
   color: var(--danger);
+}
+.doc-fallback {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-pill);
+  color: var(--text-2);
+  font-size: 12.5px;
+  text-decoration: none;
+  transition: border-color .25s, color .25s;
+}
+.doc-fallback:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  text-decoration: none;
 }
