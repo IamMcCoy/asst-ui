@@ -57,3 +57,20 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* 파일명 클릭 → 원본 열기 */
+.file-chip-open {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.file-chip-open:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}

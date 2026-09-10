@@ -270,27 +270,6 @@
   background: var(--hover);
   color: var(--danger);
 }
-.composer-upload-desc {
-  width: 100%;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: var(--r-sm);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 13px;
-  font-family: inherit;
-  outline: 0;
-  transition: border-color 120ms, box-shadow 120ms;
-}
-.composer-upload-desc::placeholder {
-  color: var(--text-4);
-}
-.composer-upload-desc:focus {
-  border-color: color-mix(in srgb, var(--accent) 50%, var(--border-strong));
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
 /* 업로드 진행/에러 인라인 표시 */
 .composer-upload-status {
   display: flex;

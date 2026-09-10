@@ -23,6 +23,7 @@ import { ModelSelector } from './ModelSelector';
 import { SessionFiles } from './SessionFiles';
 import { fileService } from '../services/api';
 import { UploadedFile } from '../types/api';
+import { formatFileSize } from '../utils/format';
 import {
     IconPaperclip,
     IconSend,
@@ -64,6 +65,8 @@ interface ComposerProps {
     onCancel?: () => void;
     // 업로드 실패 알림 콜백 (Snackbar/toast로 노출)
     onUploadError?: (message: string) => void;
+    // 파일 칩 클릭 → 우측 문서 패널에서 원본 열기
+    onOpenSessionFile?: (fileId: string) => void;
 }
 
 // 부모(Chatbot 메인 영역)가 드롭한 파일을 Composer 업로드 흐름으로 연결할 수 있도록 노출
@@ -86,6 +89,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
     isRunning = false,
     onCancel,
     onUploadError,
+    onOpenSessionFile,
 }, ref) {
     const [message, setMessage] = useState('');
     const [thinkingMode, setThinkingMode] = useState(false);
@@ -93,12 +97,13 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
     const [historyMode, setHistoryMode] = useState(true);
     const [reasoningAnchor, setReasoningAnchor] = useState<HTMLElement | null>(null);
     const [uploadingNames, setUploadingNames] = useState<string[]>([]);
-    const [pendingFiles, setPendingFiles] = useState<{ file: File; description: string }[]>([]);
+    const [pendingFiles, setPendingFiles] = useState<File[]>([]);
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-    const isGptOss = selectedModel?.toLowerCase().includes('gpt-oss') ?? false;
+    // 추론 강도(reasoning_effort)를 지원하는 모델 — 사고 모드 대신 추론 강도 사용
+    const isReasoningModel = /gpt-oss|solar-open2/.test(selectedModel?.toLowerCase() ?? '');
     const isUploading = uploadingNames.length > 0;
     const canSend = message.trim().length > 0 && !disabled && !isUploading;
 
@@ -122,9 +127,9 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
     const handleSend = () => {
         if (!canSend) return;
         onSendMessage(message.trim(), {
-            thinkingMode: isGptOss ? false : thinkingMode,
+            thinkingMode: isReasoningModel ? false : thinkingMode,
             selectedModel,
-            reasoningEffort: isGptOss ? reasoningEffort : null,
+            reasoningEffort: isReasoningModel ? reasoningEffort ?? 'low' : null,
             historyMode,
             fileIds: sessionFiles.map((f) => f.file_id).filter(Boolean),
         });
@@ -146,7 +151,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
     // 파일 input/드래그앤드롭 공통 진입점 — 설명 입력 다이얼로그로 연결
     const acceptFiles = (files: File[]) => {
         if (!sessionId || files.length === 0 || disabled || isUploading) return;
-        setPendingFiles(files.map((f) => ({ file: f, description: '' })));
+        setPendingFiles(files);
         setUploadDialogOpen(true);
     };
 
@@ -168,14 +173,6 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
     };
 
 
-    const updatePendingDescription = (idx: number, value: string) => {
-        setPendingFiles((prev) => {
-            const next = [...prev];
-            next[idx] = { ...next[idx], description: value };
-            return next;
-        });
-    };
-
     const removePendingFile = (idx: number) => {
         setPendingFiles((prev) => prev.filter((_, i) => i !== idx));
     };
@@ -193,7 +190,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
         const toUpload = pendingFiles;
         setUploadDialogOpen(false);
         setPendingFiles([]);
-        setUploadingNames((prev) => [...prev, ...toUpload.map((p) => p.file.name)]);
+        setUploadingNames((prev) => [...prev, ...toUpload.map((f) => f.name)]);
 
         // 업로드 전 현재 파일명 카운트 — 사후에 동일 파일명이 늘었는지 비교해서 5xx 등으로 throw됐지만 실제로는 저장된 경우를 식별
         const preFilenameCounts = new Map<string, number>();
@@ -207,9 +204,9 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
             | { file: File; kind: 'thrown'; error: string };
 
         const results: UploadOutcome[] = await Promise.all(
-            toUpload.map(async ({ file, description }): Promise<UploadOutcome> => {
+            toUpload.map(async (file): Promise<UploadOutcome> => {
                 try {
-                    const uploaded = await fileService.uploadFile(userId, sessionId, file, description);
+                    const uploaded = await fileService.uploadFile(userId, sessionId, file);
                     return uploaded.file_id
                         ? { file, kind: 'success' }
                         : { file, kind: 'noid' };
@@ -269,18 +266,8 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
         if (successes.length > 0 || recoveredAny) onFilesChanged?.();
     };
 
-    // 파일 크기 표기 — 1MB 이상은 MB(소수 2자리), 미만은 KB(소수 1자리)
-    const formatFileSize = (bytes: number): string => {
-        if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB';
-        const MB = 1024 * 1024;
-        if (bytes >= MB) return `${(bytes / MB).toFixed(2)} MB`;
-        return `${(bytes / 1024).toFixed(1)} KB`;
-    };
-
-    const reasoningLabel =
-        reasoningEffort
-            ? `추론: ${reasoningEffort.charAt(0).toUpperCase() + reasoningEffort.slice(1)}`
-            : '추론 강도';
+    const effectiveEffort = reasoningEffort ?? 'low';
+    const reasoningLabel = `추론: ${effectiveEffort.charAt(0).toUpperCase() + effectiveEffort.slice(1)}`;
 
     return (
         <div className="composer-wrap">
@@ -315,7 +302,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
 
                 {onDeleteSessionFile && sessionFiles.length > 0 && (
                     <div style={{ padding: '0 12px' }}>
-                        <SessionFiles files={sessionFiles} onDelete={onDeleteSessionFile} />
+                        <SessionFiles files={sessionFiles} onDelete={onDeleteSessionFile} onOpen={onOpenSessionFile} />
                     </div>
                 )}
 
@@ -374,15 +361,15 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                     <span className="cmp-divider" />
 
                     <Tooltip
-                        title={isGptOss ? 'gpt-oss 모델에서는 사용할 수 없음' : '깊이 있는 분석'}
+                        title={isReasoningModel ? '추론 모델에서는 사용할 수 없음' : '깊이 있는 분석'}
                         arrow
                     >
                         <span>
                             <button
                                 type="button"
-                                className={'cmp-btn' + (!isGptOss && thinkingMode ? ' on' : '')}
-                                onClick={() => !isGptOss && setThinkingMode((v) => !v)}
-                                disabled={disabled || isGptOss}
+                                className={'cmp-btn' + (!isReasoningModel && thinkingMode ? ' on' : '')}
+                                onClick={() => !isReasoningModel && setThinkingMode((v) => !v)}
+                                disabled={disabled || isReasoningModel}
                             >
                                 <IconBrain className="ic-sm" />
                                 사고 모드
@@ -391,15 +378,15 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                     </Tooltip>
 
                     <Tooltip
-                        title={isGptOss ? '추론 강도 설정' : 'gpt-oss 모델에서만 사용 가능'}
+                        title={isReasoningModel ? '추론 강도 설정' : '추론 모델(gpt-oss, Solar-Open2)에서만 사용 가능'}
                         arrow
                     >
                         <span>
                             <button
                                 type="button"
                                 className={'cmp-btn' + (reasoningEffort ? ' on' : '')}
-                                onClick={(e) => isGptOss && setReasoningAnchor(e.currentTarget)}
-                                disabled={disabled || !isGptOss}
+                                onClick={(e) => isReasoningModel && setReasoningAnchor(e.currentTarget)}
+                                disabled={disabled || !isReasoningModel}
                             >
                                 <IconGauge className="ic-sm" />
                                 {reasoningLabel}
@@ -428,16 +415,16 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                             {(['low', 'medium', 'high'] as const).map((level) => (
                                 <MenuItem
                                     key={level}
-                                    selected={reasoningEffort === level}
+                                    selected={effectiveEffort === level}
                                     onClick={() => {
-                                        setReasoningEffort(reasoningEffort === level ? null : level);
+                                        setReasoningEffort(level);
                                         setReasoningAnchor(null);
                                     }}
                                     sx={{ fontSize: 13, '&.Mui-selected': { bgcolor: 'var(--accent-soft)' } }}
                                 >
                                     <ListItemText
                                         primaryTypographyProps={{
-                                            fontWeight: reasoningEffort === level ? 600 : 400,
+                                            fontWeight: effectiveEffort === level ? 600 : 400,
                                         }}
                                     >
                                         {level.charAt(0).toUpperCase() + level.slice(1)}
@@ -549,18 +536,18 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                 >
                     파일 업로드
                     <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 400, color: 'var(--text-3)' }}>
-                        — 각 파일에 설명을 붙여두면 검색·분석 시 도움이 됩니다
+                        — 파일 설명은 업로드 후 자동으로 생성됩니다
                     </span>
                 </DialogTitle>
                 <DialogContent sx={{ pt: 2, px: 2.5 }}>
                     <div className="composer-upload-list">
-                        {pendingFiles.map((p, idx) => (
-                            <div className="composer-upload-row" key={`${p.file.name}-${idx}`}>
+                        {pendingFiles.map((file, idx) => (
+                            <div className="composer-upload-row" key={`${file.name}-${idx}`}>
                                 <div className="composer-upload-fileinfo">
                                     <IconFile className="ic-sm" />
-                                    <span className="composer-upload-fname">{p.file.name}</span>
+                                    <span className="composer-upload-fname">{file.name}</span>
                                     <span className="composer-upload-fsize">
-                                        {formatFileSize(p.file.size)}
+                                        {formatFileSize(file.size)}
                                     </span>
                                     <button
                                         type="button"
@@ -572,13 +559,6 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                                         <IconX className="ic-sm" />
                                     </button>
                                 </div>
-                                <input
-                                    type="text"
-                                    className="composer-upload-desc"
-                                    placeholder="파일 설명 (선택) — 예: 보안 보고서 / Apache access log 일부 / IP 분석 결과"
-                                    value={p.description}
-                                    onChange={(e) => updatePendingDescription(idx, e.target.value)}
-                                />
                             </div>
                         ))}
                         {pendingFiles.length === 0 && (

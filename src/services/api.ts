@@ -7,6 +7,7 @@ import {
     ApiKeysRequest,
     ToolsResponse,
     ExtraInfoMap,
+    ExtraInfo,
     UploadedFile,
     AdminLogsQuery,
     AdminLogsResponse,
@@ -95,7 +96,15 @@ export interface StreamHandlers {
     onFinalAnswer: (answer: string, extra_info: string, messageId: number | null) => void;
     // cancelled: 사용자가 task를 명시적으로 중단함
     onCancelled?: () => void;
-    onError: (error: Error) => void;
+    // fallback: length 등으로 응답이 잘림. 뒤이어 오는 final의 부분 답변에 배지를 얹기 위한 신호
+    onFallback?: (message: string) => void;
+    // error: data.error_code / retryable 로 CTA·표시 방식 분기 (message는 백엔드가 이미 지역화)
+    onError: (error: Error, info?: SseErrorInfo) => void;
+}
+
+export interface SseErrorInfo {
+    errorCode?: string;
+    retryable: boolean;
 }
 
 // 비동기 task 큐 패턴 — POST 응답 (성공/충돌 분기)
@@ -104,8 +113,8 @@ export type StartTaskResult =
     | { ok: false; conflict: string }
     | { ok: false; atCapacity: true };
 
-// SSE 프레임 파서 — handlers에 dispatch
-const dispatchSseEvent = (
+// SSE 프레임 파서 — handlers에 dispatch (테스트를 위해 export)
+export const dispatchSseEvent = (
     currentEvent: string,
     eventData: any,
     handlers: StreamHandlers,
@@ -155,15 +164,24 @@ const dispatchSseEvent = (
             return;
         }
         case 'error': {
-            const errMsg = payload?.error ?? payload?.message ?? 'unknown error';
-            handlers.onError(new Error(errMsg));
+            // message는 최상위, error_code/retryable은 data 안에 옴 (양쪽 분리 파싱)
+            const info = eventData?.data ?? {};
+            const errMsg = eventData?.message ?? info?.message ?? info?.error ?? 'unknown error';
+            handlers.onError(new Error(errMsg), {
+                errorCode: info?.error_code,
+                retryable: info?.retryable === true,
+            });
+            return;
+        }
+        case 'fallback': {
+            handlers.onFallback?.(eventData?.message ?? payload?.message ?? '');
             return;
         }
         case 'tool_completed':
             // 별도 처리 없음
             return;
         default: {
-            // thinking / acting / tool_* / observed / fallback / progress 등
+            // thinking / acting / tool_* / observed / progress 등
             const message = payload?.message ?? '';
             if (currentEvent && message) {
                 handlers.onProgress(currentEvent, message);
@@ -357,7 +375,8 @@ export const sessionService = {
         const result: ExtraInfoMap = {};
         for (const [messageId, value] of Object.entries(messages)) {
             if (value && typeof value === 'object' && 'data' in value) {
-                result[messageId] = (value as any).data;
+                const parsed = parseExtraInfo((value as any).data);
+                if (parsed) result[messageId] = parsed;
             }
         }
 
@@ -499,12 +518,11 @@ export const fileService = {
     async uploadFile(
         userId: string,
         sessionId: string,
-        file: File,
-        description: string = ''
+        file: File
     ): Promise<UploadedFile> {
+        // description은 백엔드 요약 모델이 자동 생성 — 전송하지 않음
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('description', description);
 
         const response = await fetch(
             `${BASE_URL}/asst/users/${userId}/sessions/${sessionId}/files`,
@@ -557,6 +575,11 @@ export const fileService = {
         return items.map((it) => normalizeUploadedFile(it));
     },
 
+    // 원본 PDF URL — iframe은 Bearer를 못 붙이므로 docService.fetchBlob으로 받아 blob URL로 렌더
+    rawFileUrl(userId: string, sessionId: string, fileId: string): string {
+        return `${BASE_URL}/asst/users/${userId}/sessions/${sessionId}/files/${fileId}/raw`;
+    },
+
     // 파일 삭제
     async deleteFile(
         userId: string,
@@ -569,6 +592,84 @@ export const fileService = {
             '파일 삭제에 실패했습니다.'
         );
     },
+};
+
+const isPdfBytes = (buf: ArrayBuffer): boolean => {
+    const head = new Uint8Array(buf.slice(0, 5));
+    return String.fromCharCode(...head) === '%PDF-';
+};
+
+// 문서/아티팩트 바이너리 조회.
+// - origin 단위 allowlist: API 호스트(Bearer 첨부) 또는 UI 자기 origin(매뉴얼 정적 파일)만 허용.
+//   문자열 prefix 비교는 "http://api.example.com.evil" 류로 우회되므로 URL.origin으로 비교한다.
+// - 응답 Content-Type을 믿지 않고 호출부가 지정한 MIME으로 재포장 → blob: URL을 iframe에 넣어도 HTML로 해석될 수 없다.
+export const docService = {
+    async fetchBlob(url: string, mimeType: string = 'application/octet-stream'): Promise<Blob> {
+        const target = new URL(url, window.location.href);
+        const apiOrigin = new URL(BASE_URL).origin;
+        let headers: Record<string, string> = {};
+        if (target.origin === apiOrigin) {
+            headers = authHeaders();
+        } else if (target.origin !== window.location.origin) {
+            throw new Error('허용되지 않은 문서 위치입니다.');
+        }
+        const response = await fetch(target.toString(), { headers });
+        if (response.status === 404) throw new Error('문서를 찾을 수 없습니다.');
+        if (response.status === 410) throw new Error('원본 파일이 유실되어 열 수 없습니다.');
+        if (!response.ok) throw new Error('문서를 불러오지 못했습니다.');
+        const bytes = await response.arrayBuffer();
+        // PDF 요청인데 매직 바이트(%PDF-)가 없으면 잘못된 응답(SPA fallback의 index.html 등).
+        // 그대로 iframe에 넣으면 Chrome이 "PDF 문서를 로드하지 못했습니다"만 띄워 원인을 알 수 없다.
+        if (mimeType === 'application/pdf' && !isPdfBytes(bytes)) {
+            throw new Error('PDF가 아닌 응답을 받았습니다. 해당 경로에 문서가 없거나 서버 설정을 확인해 주세요.');
+        }
+        return new Blob([bytes], { type: mimeType });
+    },
+};
+
+const isHttpUrl = (value: unknown): value is string => {
+    if (typeof value !== 'string') return false;
+    try {
+        const { protocol } = new URL(value, window.location.href);
+        return protocol === 'http:' || protocol === 'https:';
+    } catch {
+        return false;
+    }
+};
+
+// extra_info 정규화 — final 이벤트와 히스토리(extra-info API) 양쪽에서 공용.
+// 최상위 viz_* 필드 + "<도구명>:<call_id>" 키(text2seql / analyze_ip / analyze_weblog)를 한 구조로 모은다.
+export const parseExtraInfo = (raw: unknown): ExtraInfo | null => {
+    let obj: any = raw;
+    if (typeof raw === 'string') {
+        if (!raw.trim().startsWith('{')) return null;
+        try { obj = JSON.parse(raw); } catch { return null; }
+    }
+    if (!obj || typeof obj !== 'object') return null;
+
+    const info: ExtraInfo = {};
+    if (obj.viz_type && obj.viz_type !== 'none') {
+        info.viz_type = obj.viz_type;
+        info.chart_config = obj.chart_config;
+        info.query_result = obj.query_result;
+    }
+    for (const [key, value] of Object.entries(obj)) {
+        const tool = key.split(':')[0];
+        const v: any = value;
+        if (tool === 'text2seql' && typeof v?.seql === 'string' && v.seql.trim()) {
+            (info.seql ??= []).push(v.seql);
+        } else if ((tool === 'analyze_ip' || tool === 'analyze_weblog') && isHttpUrl(v?.download_url)) {
+            // download_url은 <a href>로 그대로 렌더되므로 http(s) 외 스킴(javascript:/data: 등)은 여기서 차단
+            (info.artifacts ??= []).push({
+                tool,
+                filename: v.filename ?? v.download_url.split('/').pop() ?? 'result',
+                bytes: v.bytes,
+                expires_at: v.expires_at,
+                download_url: v.download_url,
+            });
+        }
+    }
+    return Object.keys(info).length > 0 ? info : null;
 };
 
 // 관리자 API

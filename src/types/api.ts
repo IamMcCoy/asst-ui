@@ -104,6 +104,8 @@ export interface Message {
     timestamp: string;
     feedback_type?: 'thumbs_up' | 'thumbs_down';
     model?: string | null;
+    // fallback(stage=length) 이후 저장된 부분 답변 — "응답이 잘렸어요" 배지 표시용
+    truncated?: boolean;
 }
 
 export interface FeedbackRequest {
@@ -140,6 +142,18 @@ export interface ExtraInfo {
         y_label?: string;
     };
     query_result?: Record<string, string | number>[];
+    // text2seql이 검증 통과한 SeQL 쿼리 (extra_info의 "text2seql:<call_id>" 키에서 수집)
+    seql?: string[];
+    // IP/Payload 분석 전체 결과 파일 ("analyze_ip:" / "analyze_weblog:" 키에서 수집)
+    artifacts?: AnalysisArtifact[];
+}
+
+export interface AnalysisArtifact {
+    tool: 'analyze_ip' | 'analyze_weblog';
+    filename: string;
+    bytes?: number;
+    expires_at?: string;
+    download_url: string;
 }
 
 // message_id를 키로 하는 ExtraInfo 맵

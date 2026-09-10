@@ -184,6 +184,21 @@
   text-decoration: underline;
 }
 
+/* 응답 잘림 배지 (fallback stage → 부분 답변) */
+.msg-truncated-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+  color: color-mix(in srgb, #b45309 88%, var(--text));
+  border: 1px solid color-mix(in srgb, #f59e0b 32%, transparent);
+}
+
 /* Thinking 블록 (접힘) */
 .msg-thinking-toggle {
   display: inline-flex;
@@ -313,4 +328,100 @@
   font-family: var(--font-mono);
   font-size: 12px;
   word-break: break-word;
+}
+
+/* text2seql 생성 쿼리 — 답변 말미 접힘 블록 */
+.msg-seql {
+  margin-top: 10px;
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+}
+.msg-seql > summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-3);
+  user-select: none;
+}
+.msg-seql > summary:hover {
+  color: var(--text);
+}
+.msg-seql pre {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* IP/Payload 분석 결과 파일 다운로드 카드 */
+.msg-artifact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  max-width: 92%;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+.msg-artifact > .ic {
+  color: var(--accent);
+  flex: none;
+}
+.msg-artifact.expired {
+  opacity: 0.6;
+}
+.msg-artifact-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.msg-artifact-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.msg-artifact-meta {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.msg-artifact-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  flex: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.msg-artifact-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-soft-2);
+}
+.msg-artifact-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+a.msg-artifact-btn {
+  text-decoration: none;
 }

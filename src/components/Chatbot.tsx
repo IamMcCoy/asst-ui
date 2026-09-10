@@ -1,5 +1,5 @@
 import { FC, useState, useEffect, useRef, useMemo, useCallback, DragEvent } from 'react';
-import { Box, Typography, Alert } from '@mui/material';
+import { Box, Typography, Alert, Button, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import { SessionSidebar } from './SessionSidebar';
 import { ChatMessage } from './ChatMessage';
 import { Composer, ComposerHandle } from './Composer';
@@ -9,8 +9,9 @@ import { EmptyState } from './EmptyState';
 import { SettingsDialog } from './SettingsDialog';
 import { AdminLogsDialog } from './AdminLogsDialog';
 import { AdminSettingsDialog } from './AdminSettingsDialog';
+import { DocPanel, DocRef } from './DocPanel';
 import { Session, Message, ChatRequest, ExtraInfoMap, ExtraInfo, UploadedFile } from '../types/api';
-import { chatService, sessionService, feedbackService, modelService, fileService, isAdminToken, StreamHandlers } from '../services/api';
+import { chatService, sessionService, feedbackService, modelService, fileService, isAdminToken, parseExtraInfo, StreamHandlers } from '../services/api';
 import { IconSparkle } from './icons';
 import { useColorMode } from '../App';
 import { useFavoriteSessions } from '../hooks/useFavoriteSessions';
@@ -44,8 +45,16 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
     // 새로고침 직후 snapshot으로 받은 사용자 질문 — DB에 아직 없으므로 loadMessages
     // 결과에 별도로 합쳐 넣어야 함. finalize 시점에 제거.
     const pendingUserQuestionRef = useRef<Record<string, string>>({});
+    // fallback(stage) 수신 → 뒤이어 오는 final 메시지에 "응답이 잘렸어요" 배지를 얹기 위한 플래그
+    const truncatedRef = useRef<Record<string, boolean>>({});
+    // 재시도 가능한 오류 시 동일 요청을 재전송하기 위해 세션별 마지막 ChatRequest 보관
+    const lastRequestRef = useRef<Record<string, ChatRequest>>({});
 
     const [error, setError] = useState<string | null>(null);
+    // SSE task 오류 — error_code/retryable로 표시 방식(배너 vs 알림창)·CTA(재시도 vs 질문 수정) 분기
+    const [chatError, setChatError] = useState<
+        { message: string; retryable: boolean; code?: string; sid: string } | null
+    >(null);
     const [extraInfoMap, setExtraInfoMap] = useState<ExtraInfoMap>({});
     const [autoScroll, setAutoScroll] = useState(true);
     const [models, setModels] = useState<string[]>([]);
@@ -55,6 +64,9 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
     const [adminOpen, setAdminOpen] = useState(false);
     const [adminSettingsOpen, setAdminSettingsOpen] = useState(false);
     const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+    // 우측 문서 패널 — 업로드 파일 탭은 sessionFiles에서 파생, 매뉴얼 링크는 별도 1개 탭
+    const [manualDoc, setManualDoc] = useState<DocRef | null>(null);
+    const [activeDocKey, setActiveDocKey] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const messagesContainerRef = useRef<HTMLDivElement | null>(null);
     // 세션 진입 직후 첫 스크롤은 smooth 없이 즉시 하단으로
@@ -105,8 +117,33 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
         } else {
             setSessionFiles([]);
         }
+        // 세션이 바뀌면 문서 패널은 닫는다 (탭이 세션 파일에 종속)
+        setManualDoc(null);
+        setActiveDocKey(null);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentSessionId]);
+
+    const panelDocs: DocRef[] = useMemo(() => {
+        const uploads: DocRef[] = currentSessionId
+            ? sessionFiles.map((f) => ({
+                  key: f.file_id,
+                  title: f.filename,
+                  url: fileService.rawFileUrl(userId, currentSessionId, f.file_id),
+                  kind: 'upload',
+                  description: f.description,
+              }))
+            : [];
+        return manualDoc ? [...uploads, manualDoc] : uploads;
+    }, [sessionFiles, manualDoc, userId, currentSessionId]);
+
+    const handleOpenSessionFile = (fileId: string) => setActiveDocKey(fileId);
+
+    // 답변 속 매뉴얼 링크(…/x.pdf#page=N) → 매뉴얼 탭 1개를 교체하며 패널에서 열기
+    const handleOpenDocument = (href: string) => {
+        const title = decodeURIComponent(href.split('#')[0].split('/').pop() || '매뉴얼');
+        setManualDoc({ key: 'manual', title, url: href, kind: 'manual' });
+        setActiveDocKey('manual');
+    };
 
     const handleDeleteSessionFile = async (fileId: string) => {
         if (!currentSessionId) return;
@@ -320,7 +357,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
         }
     };
 
-    const loadSessions = async () => {
+    const loadSessions = async (): Promise<Session[]> => {
         try {
             const sessionList = await sessionService.listSessions(userId);
             console.log('[Sessions] API Response:', sessionList);
@@ -353,15 +390,28 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
             if (sessionsArray.length === 0) {
                 console.log('[Auto] Creating first session');
                 await handleCreateSession();
-            } else if (!currentSessionId) {
-                // 세션은 있지만 선택된 세션이 없으면 첫 번째 세션 선택
-                setCurrentSessionId(sessionsArray[0].session_id);
+            } else {
+                // 선택된 세션이 없을 때만 첫 번째 세션 선택
+                // (finalize 등 stale 클로저에서 호출돼도 사용자의 현재 세션을 바꾸지 않도록 functional update)
+                setCurrentSessionId((prev) => prev ?? sessionsArray[0].session_id);
             }
+            return sessionsArray;
         } catch (err) {
             setSessions([]); // Ensure sessions is always an array even on error
             setError('세션 목록을 불러오는데 실패했습니다.');
             console.error(err);
+            return [];
         }
+    };
+
+    // 첫 답변 종료 후 요약 모델이 만든 세션 제목 반영 — 별도 push가 없어 재조회.
+    // 제목이 아직 비어 있으면(답변이 1초 내 끝난 경우 등) 1.5초 간격으로 최대 2회 더 조회.
+    const refreshTitleAfterAnswer = (sidParam: string, attempt = 0) => {
+        window.setTimeout(async () => {
+            const list = await loadSessions();
+            const title = list.find((s) => s.session_id === sidParam)?.title;
+            if (!title && attempt < 2) refreshTitleAfterAnswer(sidParam, attempt + 1);
+        }, attempt === 0 ? 800 : 1500);
     };
 
     const loadMessages = async (sessionId: string) => {
@@ -588,7 +638,11 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                 });
                 delete subscriptionsRef.current[sidParam];
                 delete pendingUserQuestionRef.current[sidParam];
+                delete truncatedRef.current[sidParam];
             };
+
+            // cleanup이 지우기 전에 잘림 여부를 캡처 (fallback→final 순서로 도착)
+            const wasTruncated = !!truncatedRef.current[sidParam];
 
             const trimmed = finalText.trim();
 
@@ -603,7 +657,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
             if (!trimmed || isJson) {
                 if (isJson) console.warn('[Skipping] streamed text is JSON, not saving as message');
                 cleanup();
-                void loadSessions();
+                refreshTitleAfterAnswer(sidParam);
                 return;
             }
 
@@ -613,32 +667,21 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                 role: 'assistant',
                 content: finalText,
                 timestamp: new Date().toISOString(),
+                truncated: wasTruncated || undefined,
             };
             setMessagesMap((m) => ({
                 ...m,
                 [sidParam]: [...(m[sidParam] ?? []), assistantMessage],
             }));
 
-            // extra_info 파싱 → 시각화 데이터
-            let extra_info_map: any = null;
-            if (typeof extra_info === 'string' && extra_info.trim().startsWith('{')) {
-                try { extra_info_map = JSON.parse(extra_info); } catch { /* noop */ }
-            } else if (typeof extra_info === 'object' && extra_info !== null) {
-                extra_info_map = extra_info;
-            }
-            if (extra_info_map?.viz_type && extra_info_map?.viz_type !== 'none') {
-                setExtraInfoMap((prev) => ({
-                    ...prev,
-                    [String(msgId)]: {
-                        viz_type: extra_info_map.viz_type,
-                        chart_config: extra_info_map.chart_config,
-                        query_result: extra_info_map.query_result,
-                    },
-                }));
+            // extra_info 파싱 → 시각화 + SeQL + 분석 결과 파일 (히스토리 로드와 같은 정규화)
+            const parsed = parseExtraInfo(extra_info);
+            if (parsed) {
+                setExtraInfoMap((prev) => ({ ...prev, [String(msgId)]: parsed }));
             }
 
             cleanup();
-            void loadSessions();
+            refreshTitleAfterAnswer(sidParam);
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [],
@@ -720,11 +763,22 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                     return m;
                 });
             },
-            onError: (err) => {
-                console.error('[SSE error]', sidParam, err);
-                setError('메시지 전송에 실패했습니다.');
+            onFallback: () => {
+                // 뒤이어 오는 final의 부분 답변에 "응답이 잘렸어요" 배지를 얹기 위한 표식
+                truncatedRef.current[sidParam] = true;
+            },
+            onError: (err, info) => {
+                console.error('[SSE error]', sidParam, err, info);
+                // message는 백엔드가 이미 지역화 → 그대로 표시. code/retryable로 CTA·표시 방식만 분기
+                setChatError({
+                    message: err.message || '메시지 전송에 실패했습니다.',
+                    retryable: info?.retryable === true,
+                    code: info?.errorCode,
+                    sid: sidParam,
+                });
                 setLoadingMap((m) => ({ ...m, [sidParam]: false }));
                 setProgressMap((m) => ({ ...m, [sidParam]: EMPTY_PROGRESS }));
+                setStreamingMap((m) => ({ ...m, [sidParam]: '' }));
                 setActiveTaskMap((m) => {
                     const next = { ...m };
                     delete next[sidParam];
@@ -732,6 +786,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                 });
                 delete subscriptionsRef.current[sidParam];
                 delete pendingUserQuestionRef.current[sidParam];
+                delete truncatedRef.current[sidParam];
             },
         }),
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -746,6 +801,44 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
             subscriptionsRef.current[sidParam] = ctrl;
         },
         [buildHandlers],
+    );
+
+    // task 시작 + 구독 — 신규 전송과 재시도가 공유. 사용자 메시지 추가는 호출부 책임
+    const startAndSubscribe = useCallback(
+        async (sidParam: string, request: ChatRequest) => {
+            lastRequestRef.current[sidParam] = request;
+            setLoadingMap((m) => ({ ...m, [sidParam]: true }));
+            setStreamingMap((m) => ({ ...m, [sidParam]: '' }));
+            setPendingExtraMap((m) => ({ ...m, [sidParam]: null }));
+            setProgressMap((m) => ({ ...m, [sidParam]: EMPTY_PROGRESS }));
+            setChatError((e) => (e?.sid === sidParam ? null : e));
+
+            try {
+                const started = await chatService.startChatTask(request);
+                if (!started.ok && 'atCapacity' in started) {
+                    setChatError({
+                        message: '현재 처리 중인 요청이 많아 잠시 후 다시 시도해 주세요.',
+                        retryable: true,
+                        sid: sidParam,
+                    });
+                    setLoadingMap((m) => ({ ...m, [sidParam]: false }));
+                    setProgressMap((m) => ({ ...m, [sidParam]: EMPTY_PROGRESS }));
+                    return;
+                }
+                const taskId = started.ok ? started.data.task_id : started.conflict;
+                if (!started.ok) {
+                    console.warn('[409 Conflict] 기존 task에 재구독:', taskId);
+                }
+                setActiveTaskMap((m) => ({ ...m, [sidParam]: taskId }));
+                attachSubscription(sidParam, taskId);
+            } catch (err) {
+                console.error('[startChatTask] 실패:', err);
+                setChatError({ message: '메시지 전송에 실패했습니다.', retryable: true, sid: sidParam });
+                setLoadingMap((m) => ({ ...m, [sidParam]: false }));
+                setProgressMap((m) => ({ ...m, [sidParam]: EMPTY_PROGRESS }));
+            }
+        },
+        [attachSubscription],
     );
 
     const handleSendMessage = async (
@@ -776,14 +869,9 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
             [sidParam]: [...(m[sidParam] ?? []), userMessage],
         }));
         setAutoScroll(true);
-
-        setLoadingMap((m) => ({ ...m, [sidParam]: true }));
-        setStreamingMap((m) => ({ ...m, [sidParam]: '' }));
-        setPendingExtraMap((m) => ({ ...m, [sidParam]: null }));
-        setProgressMap((m) => ({ ...m, [sidParam]: EMPTY_PROGRESS }));
         setError(null);
 
-        const request: ChatRequest = {
+        await startAndSubscribe(sidParam, {
             user_id: userId,
             session_id: sidParam,
             query: messageText,
@@ -792,28 +880,16 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
             reasoning_effort: options.reasoningEffort,
             history_mode: options.historyMode,
             file_ids: options.fileIds.length > 0 ? options.fileIds : null,
-        };
+        });
+    };
 
-        try {
-            const started = await chatService.startChatTask(request);
-            if (!started.ok && 'atCapacity' in started) {
-                setError('현재 처리 중인 요청이 많아 잠시 후 다시 시도해 주세요.');
-                setLoadingMap((m) => ({ ...m, [sidParam]: false }));
-                setProgressMap((m) => ({ ...m, [sidParam]: EMPTY_PROGRESS }));
-                return;
-            }
-            const taskId = started.ok ? started.data.task_id : started.conflict;
-            if (!started.ok) {
-                console.warn('[409 Conflict] 기존 task에 재구독:', taskId);
-            }
-            setActiveTaskMap((m) => ({ ...m, [sidParam]: taskId }));
-            attachSubscription(sidParam, taskId);
-        } catch (err) {
-            console.error('[startChatTask] 실패:', err);
-            setError('메시지 전송에 실패했습니다.');
-            setLoadingMap((m) => ({ ...m, [sidParam]: false }));
-            setProgressMap((m) => ({ ...m, [sidParam]: EMPTY_PROGRESS }));
-        }
+    // 재시도 (retryable 오류) — 마지막 요청을 그대로 재전송. 사용자 메시지는 이미 목록에 있음
+    const handleRetryChat = () => {
+        if (!chatError) return;
+        const sidParam = chatError.sid;
+        const request = lastRequestRef.current[sidParam];
+        setChatError(null);
+        if (request) void startAndSubscribe(sidParam, request);
     };
 
     // 정지 버튼 — 현재 세션의 진행 중 task 취소
@@ -860,7 +936,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
         <Box
             sx={{
                 display: 'grid',
-                gridTemplateColumns: 'auto 1fr',
+                gridTemplateColumns: 'auto 1fr auto',
                 height: '100vh',
                 width: '100vw',
                 overflow: 'hidden',
@@ -948,6 +1024,38 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                         </Alert>
                     )}
 
+                    {/* SSE task 오류 — context 초과는 알림창(하단)에서 처리, 그 외는 인라인 배너 */}
+                    {chatError && chatError.sid === currentSessionId
+                        && chatError.code !== 'context_length_exceeded' && (
+                        <Alert
+                            severity="error"
+                            onClose={() => setChatError(null)}
+                            action={
+                                chatError.retryable ? (
+                                    <Button color="inherit" size="small" onClick={handleRetryChat}>
+                                        재시도
+                                    </Button>
+                                ) : undefined
+                            }
+                            sx={{
+                                mb: 2,
+                                mx: 4,
+                                mt: 3,
+                                borderRadius: '12px',
+                                whiteSpace: 'pre-line',
+                                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                            }}
+                        >
+                            {chatError.message}
+                            {!chatError.retryable && (
+                                <Typography variant="caption" sx={{ display: 'block', mt: 0.5, opacity: 0.85 }}>
+                                    질문을 수정해 다시 시도해 주세요.
+                                </Typography>
+                            )}
+                        </Alert>
+                    )}
+
                     {!currentSessionId ? (
                         <Box
                             flex={1}
@@ -1024,6 +1132,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                                             isRunning={!!activeTaskId}
                                             onCancel={handleCancelCurrentTask}
                                             onUploadError={setUploadNotice}
+                                            onOpenSessionFile={handleOpenSessionFile}
                                         />
                                     </Box>
                                 </Box>
@@ -1052,6 +1161,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                                                 onFeedback={handleFeedback}
                                                 extraInfo={extraInfoMap[String(message.message_id)]}
                                                 userInitial={(userId || 'U').trim().charAt(0).toUpperCase() || 'U'}
+                                                onOpenDocument={handleOpenDocument}
                                             />
                                         ))}
 
@@ -1078,6 +1188,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                                         streaming
                                         extraInfo={pendingExtraInfo || undefined}
                                         userInitial={(userId || 'U').trim().charAt(0).toUpperCase() || 'U'}
+                                        onOpenDocument={handleOpenDocument}
                                     />
                                 )}
 
@@ -1111,6 +1222,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                                     isRunning={!!activeTaskId}
                                     onCancel={handleCancelCurrentTask}
                                     onUploadError={setUploadNotice}
+                                            onOpenSessionFile={handleOpenSessionFile}
                                 />
                             </Box>
                         </>
@@ -1206,6 +1318,33 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
                     </Box>
                 )}
             </Box>
+
+            {activeDocKey && panelDocs.length > 0 && (
+                <DocPanel
+                    docs={panelDocs}
+                    activeKey={activeDocKey}
+                    onSelect={setActiveDocKey}
+                    onClose={() => { setActiveDocKey(null); setManualDoc(null); }}
+                />
+            )}
+
+            {/* 입력 컨텍스트 초과 — 응답 자체가 생성되지 않으므로 인라인 대신 알림창으로 명확히 안내 */}
+            <Dialog
+                open={!!chatError && chatError.code === 'context_length_exceeded'}
+                onClose={() => setChatError(null)}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle>입력이 너무 깁니다</DialogTitle>
+                <DialogContent>
+                    <DialogContentText sx={{ whiteSpace: 'pre-line' }}>
+                        {chatError?.message}
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setChatError(null)} variant="contained">확인</Button>
+                </DialogActions>
+            </Dialog>
 
             <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} userId={userId} />
             <AdminLogsDialog open={adminOpen} onClose={() => setAdminOpen(false)} />

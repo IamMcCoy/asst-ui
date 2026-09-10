@@ -2,7 +2,7 @@
 
 # Variables - can be overridden via command line
 IMAGE_NAME ?= saus-frontend
-TAG ?= v1.3.1
+TAG ?= v1.4.0
 CONTAINER_NAME ?= saus-frontend-container
 PORT ?= 80
 HOST_PORT ?= 8080
@@ -11,6 +11,10 @@ HOST_PORT ?= 8080
 API_URL ?= http://192.168.1.70:31998
 USER_ID ?= demo-user
 JWT_TOKEN ?=
+# 매뉴얼 PDF 호스트 디렉터리 (선택). 지정 시 /resources/pdf/ 로 서빙되어
+# asst-contents 답변의 매뉴얼 링크(/resources/pdf/<파일>.pdf#page=N)가 우측 패널에서 열린다.
+MANUAL_DIR ?=
+MANUAL_MOUNT = $(if $(MANUAL_DIR),-v $(abspath $(MANUAL_DIR)):/usr/share/nginx/html/resources/pdf:ro,)
 
 # Docker registry (default: SecuLayer 사내 레지스트리)
 REGISTRY ?= registry.seculayer.com:31500
@@ -48,6 +52,7 @@ help:
 	@echo "Customization examples:"
 	@echo "  make build TAG=v1.0.0"
 	@echo "  make run-bg HOST_PORT=3000 API_URL=http://api.example.com:8000 USER_ID=prod-user"
+	@echo "  make run-bg MANUAL_DIR=/data/manuals   # 매뉴얼 PDF를 /resources/pdf/ 로 서빙"
 	@echo "  make deploy TAG=prod API_URL=http://production-api:8000"
 	@echo "  make save TAG=v1.0.0"
 	@echo "  make push REGISTRY=your-username TAG=v1.0.0"
@@ -69,6 +74,7 @@ run: stop
 		-e REACT_APP_API_BASE_URL=$(API_URL) \
 		-e REACT_APP_USER_ID=$(USER_ID) \
 		-e REACT_APP_JWT_TOKEN=$(JWT_TOKEN) \
+		$(MANUAL_MOUNT) \
 		--name $(CONTAINER_NAME) \
 		$(IMAGE_TAG)
 
@@ -83,6 +89,7 @@ run-bg: stop
 		-e REACT_APP_API_BASE_URL=$(API_URL) \
 		-e REACT_APP_USER_ID=$(USER_ID) \
 		-e REACT_APP_JWT_TOKEN=$(JWT_TOKEN) \
+		$(MANUAL_MOUNT) \
 		--name $(CONTAINER_NAME) \
 		$(IMAGE_TAG)
 	@echo "Container started. Use 'make logs' to view logs"

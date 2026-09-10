@@ -1,12 +1,13 @@
-import { FC, useState } from 'react';
+import { FC, useState, MouseEvent } from 'react';
 import { Tooltip, Fade, Collapse } from '@mui/material';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import rehypeRaw from 'rehype-raw';
-import { Message, ExtraInfo } from '../types/api';
+import { Message, ExtraInfo, AnalysisArtifact } from '../types/api';
 import ChartVisualization from './ChartVisualization';
-import { IconSparkle, IconCheck, IconX, IconChevronDown } from './icons';
+import { formatFileSize } from '../utils/format';
+import { IconSparkle, IconCheck, IconX, IconChevronDown, IconDownload, IconFile } from './icons';
 import './ChatMessage.css';
 
 interface ChatMessageProps {
@@ -16,7 +17,51 @@ interface ChatMessageProps {
     streaming?: boolean;
     extraInfo?: ExtraInfo;
     userInitial?: string;
+    // 답변 속 매뉴얼 PDF 링크(…/x.pdf#page=N) 클릭 → 새 창 대신 우측 문서 패널에서 열기
+    onOpenDocument?: (href: string) => void;
 }
+
+const isPdfLink = (href: string) => /\.pdf(#page=\d+)?$/i.test(href);
+
+// IP/Payload 분석 전체 결과 파일 카드 — expires_at 경과 시 만료 표시.
+// artifacts 엔드포인트는 인증 없이 브라우저가 직접 여는 설계(파일명의 128비트 난수가 접근 통제)이고
+// host가 API_BASE_URL과 다를 수 있으므로 fetch 대신 download_url을 그대로 연다.
+// 서버가 Content-Disposition: attachment로 응답해 새 탭은 저장 후 닫힌다.
+const ArtifactCard: FC<{ artifact: AnalysisArtifact }> = ({ artifact }) => {
+    const expired = !!artifact.expires_at && new Date(artifact.expires_at).getTime() < Date.now();
+
+    return (
+        <div className={'msg-artifact' + (expired ? ' expired' : '')}>
+            <IconFile className="ic-sm" />
+            <div className="msg-artifact-info">
+                <span className="msg-artifact-name" title={artifact.filename}>{artifact.filename}</span>
+                <span className="msg-artifact-meta">
+                    {artifact.tool === 'analyze_ip' ? 'IP 분석 전체 결과' : 'Payload 분석 전체 결과'}
+                    {artifact.bytes != null && ` · ${formatFileSize(artifact.bytes)}`}
+                    {expired && ' · 만료됨'}
+                </span>
+            </div>
+            {expired ? (
+                <button type="button" className="msg-artifact-btn" disabled title="다운로드 기한이 지났습니다">
+                    <IconDownload className="ic-sm" />
+                    다운로드
+                </button>
+            ) : (
+                <a
+                    className="msg-artifact-btn"
+                    href={artifact.download_url}
+                    download={artifact.filename}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="다운로드"
+                >
+                    <IconDownload className="ic-sm" />
+                    다운로드
+                </a>
+            )}
+        </div>
+    );
+};
 
 // 메시지에서 <think> 블록을 파싱
 const parseThinkingBlock = (content: string): { thinking: string | null; response: string } => {
@@ -47,6 +92,7 @@ export const ChatMessage: FC<ChatMessageProps> = ({
     streaming = false,
     extraInfo,
     userInitial = 'U',
+    onOpenDocument,
 }) => {
     const [localFeedback, setLocalFeedback] = useState<'thumbs_up' | 'thumbs_down' | null>(
         message.feedback_type || null
@@ -59,6 +105,29 @@ export const ChatMessage: FC<ChatMessageProps> = ({
     const handleFeedback = (type: 'thumbs_up' | 'thumbs_down') => {
         setLocalFeedback(type);
         onFeedback(message.message_id, type);
+    };
+
+    // 마크다운 링크 오버라이드 — PDF 링크만 문서 패널로, 나머지는 기본 동작
+    const markdownComponents = {
+        a: ({ href, children, node: _node, ...rest }: any) => {
+            const openInPanel = !!onOpenDocument && typeof href === 'string' && isPdfLink(href);
+            const handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
+                if (!openInPanel) return;
+                e.preventDefault();
+                onOpenDocument!(href);
+            };
+            return (
+                <a
+                    href={href}
+                    {...rest}
+                    onClick={handleClick}
+                    target={openInPanel ? undefined : '_blank'}
+                    rel={openInPanel ? undefined : 'noopener noreferrer'}
+                >
+                    {children}
+                </a>
+            );
+        },
     };
 
     return (
@@ -84,6 +153,12 @@ export const ChatMessage: FC<ChatMessageProps> = ({
                     </div>
 
                     <div className="msg-bubble">
+                        {message.truncated && !isUser && (
+                            <div className="msg-truncated-badge">
+                                <IconX className="ic-sm" />
+                                응답이 잘렸어요 — 토큰 한도에 도달해 일부만 생성되었습니다
+                            </div>
+                        )}
                         {thinking && !isUser && (
                             <>
                                 <button
@@ -117,11 +192,25 @@ export const ChatMessage: FC<ChatMessageProps> = ({
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
                                 rehypePlugins={[rehypeHighlight, rehypeRaw]}
+                                components={markdownComponents}
                             >
                                 {response}
                             </ReactMarkdown>
                         </div>
+
+                        {!isUser && !streaming && extraInfo?.seql && extraInfo.seql.length > 0 && (
+                            <details className="msg-seql">
+                                <summary>생성된 SeQL 쿼리 ({extraInfo.seql.length})</summary>
+                                {extraInfo.seql.map((q, i) => (
+                                    <pre key={i}><code className="language-sql">{q}</code></pre>
+                                ))}
+                            </details>
+                        )}
                     </div>
+
+                    {!isUser && !streaming && extraInfo?.artifacts?.map((a) => (
+                        <ArtifactCard key={a.download_url} artifact={a} />
+                    ))}
 
                     {!isUser && !streaming && extraInfo && extraInfo.viz_type && extraInfo.viz_type !== 'none' && extraInfo.query_result && (
                         <div style={{ marginTop: 10, maxWidth: '100%' }}>

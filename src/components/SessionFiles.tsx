@@ -6,9 +6,11 @@ import './SessionFiles.css';
 interface SessionFilesProps {
     files: UploadedFile[];
     onDelete: (fileId: string) => Promise<void> | void;
+    // 파일명 클릭 → 우측 문서 패널에서 원본 열기
+    onOpen?: (fileId: string) => void;
 }
 
-export const SessionFiles: FC<SessionFilesProps> = ({ files, onDelete }) => {
+export const SessionFiles: FC<SessionFilesProps> = ({ files, onDelete, onOpen }) => {
     const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
     if (files.length === 0) return null;
@@ -26,9 +28,24 @@ export const SessionFiles: FC<SessionFilesProps> = ({ files, onDelete }) => {
     return (
         <div className="session-files">
             {files.map((f) => (
-                <div className="file-chip" key={f.file_id} title={f.filename}>
+                // 자동 생성 description은 tooltip(title)로만 노출
+                <div
+                    className="file-chip"
+                    key={f.file_id}
+                    title={f.description ? `${f.filename}\n${f.description}` : f.filename}
+                >
                     <IconFile className="ic-sm" />
-                    <span className="file-chip-name">{f.filename}</span>
+                    {onOpen ? (
+                        <button
+                            type="button"
+                            className="file-chip-name file-chip-open"
+                            onClick={() => onOpen(f.file_id)}
+                        >
+                            {f.filename}
+                        </button>
+                    ) : (
+                        <span className="file-chip-name">{f.filename}</span>
+                    )}
                     <button
                         type="button"
                         className="file-chip-x"

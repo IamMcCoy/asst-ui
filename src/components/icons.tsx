@@ -192,3 +192,27 @@ export const IconSettings: FC<IconProps> = ({ className, ...rest }) => (
         <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5h0a1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
     </svg>
 );
+
+export const IconEye: FC<IconProps> = ({ className, ...rest }) => (
+    <svg {...base(className)} {...rest}>
+        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" />
+        <circle cx="12" cy="12" r="3" />
+    </svg>
+);
+
+export const IconEyeOff: FC<IconProps> = ({ className, ...rest }) => (
+    <svg {...base(className)} {...rest}>
+        <path d="M3 3l18 18" />
+        <path d="M10.6 10.6a3 3 0 0 0 4.2 4.2" />
+        <path d="M9.9 5.2A10.5 10.5 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1" />
+        <path d="M6.2 6.2A17 17 0 0 0 2 12s3.5 7 10 7a10 10 0 0 0 4.3-.9" />
+    </svg>
+);
+
+export const IconDownload: FC<IconProps> = ({ className, ...rest }) => (
+    <svg {...base(className)} {...rest}>
+        <path d="M12 3v12" />
+        <path d="M7 10l5 5 5-5" />
+        <path d="M4 19h16" />
+    </svg>
+);
