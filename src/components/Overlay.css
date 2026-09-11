@@ -1,0 +1,671 @@
+/* Overlay — 팝오버/다이얼로그 내부 공용 프리미티브
+ *
+ * MUI Popover/Dialog는 "동작"(앵커 포지셔닝 · portal · focus trap · click-away · Esc ·
+ * 스크롤 락)만 쓰고, 보이는 것은 전부 여기서 그린다. 그래서 Paper에는 배경도 테두리도
+ * 주지 않고(`.ov-pop`/`.ov-dlg`가 직접 칠한다) List/Typography/TextField/Button/Switch는
+ * 쓰지 않는다 — 머티리얼 기본 밀도(14px 본문, 48px 행, ripple)가 새 디자인과 다르기 때문.
+ *
+ * 치수는 SessionSidebar(.sb-item, .sb-item-edit) / Composer(.cmp-btn)와 같은 값을 쓴다:
+ * 행 13px · 8px/10px 패딩 · border-left accent, 버튼 모노 12px, 입력 28px + --r-sm.
+ */
+
+/* ── 컨테이너 ───────────────────────────────────────────── */
+
+.ov-pop {
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-pop);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.ov-dlg {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* ── 헤더 ───────────────────────────────────────────────── */
+
+.ov-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.ov-head .ic,
+.ov-head .ic-sm,
+.ov-head .ic-lg {
+  color: var(--accent);
+}
+.ov-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.ov-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.ov-head-spacer {
+  flex: 1;
+}
+
+/* 헤더 우측 카운터 배지 (예: 6/12 활성화) */
+.ov-badge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: none;
+}
+
+.ov-close {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  transition: background .2s, color .2s;
+}
+.ov-close:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* ── 본문 / 푸터 ────────────────────────────────────────── */
+
+.ov-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ov-body.tight {
+  padding: 6px;
+  gap: 0;
+}
+
+.ov-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  flex: none;
+}
+
+.ov-divider {
+  height: 1px;
+  background: var(--border);
+  border: 0;
+  margin: 0;
+  flex: none;
+}
+
+/* 설명 블록 — 제목(모노 라벨) + 보조 문장 */
+.ov-note {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ov-note-text {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-3);
+}
+
+.ov-empty {
+  padding: 24px 8px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+/* ── 리스트 행 (.sb-item과 동일 치수) ──────────────────── */
+
+.ov-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+}
+
+.ov-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-left: 1px solid transparent;
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: transparent;
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: color .2s, border-color .2s, background .2s;
+}
+.ov-item:hover:not(:disabled) {
+  color: var(--text);
+  border-left-color: var(--accent);
+  background: var(--hover);
+}
+.ov-item.active {
+  color: var(--text);
+  border-left-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.ov-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* 클릭 대상이 아닌 행 (토글만 있는 도구 목록) */
+.ov-item.static {
+  cursor: default;
+}
+.ov-item.static:hover {
+  border-left-color: transparent;
+}
+
+.ov-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ov-item .ic,
+.ov-item .ic-sm,
+.ov-item .ic-lg {
+  flex: none;
+}
+.ov-item.active > .ic-check {
+  color: var(--accent);
+}
+.ov-item.dim .ov-item-name {
+  color: var(--text-3);
+}
+
+/* ── 버튼 (.cmp-btn과 동일) ────────────────────────────── */
+
+.ov-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  white-space: nowrap;
+  transition: all .25s;
+}
+.ov-btn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.ov-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+/* 주 액션 — Composer의 .cmp-send와 같은 flat accent */
+.ov-btn.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.ov-btn.primary:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  transform: translateY(-1px);
+}
+.ov-btn.accent {
+  border-color: var(--accent-soft-2);
+  color: var(--accent);
+}
+.ov-btn.accent:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ov-btn.danger {
+  color: var(--danger);
+}
+.ov-btn.danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: var(--hover);
+  color: var(--danger);
+}
+.ov-btn.grow {
+  flex: 1;
+}
+.ov-btn .ic,
+.ov-btn .ic-sm {
+  width: 13px;
+  height: 13px;
+}
+
+.ov-btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── 입력 (.sb-item-edit input과 동일 치수) ────────────── */
+
+.ov-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ov-field-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ov-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 4px 0 10px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: border-color .2s;
+}
+.ov-input-wrap:focus-within {
+  border-color: var(--accent);
+}
+.ov-input-wrap.invalid {
+  border-color: var(--danger);
+}
+.ov-input-wrap input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  outline: 0;
+}
+.ov-input-wrap input::placeholder {
+  color: var(--text-4);
+}
+.ov-input-wrap input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+/* 입력 안쪽 아이콘 버튼 (비밀번호 보기 등) */
+.ov-input-btn {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--r-xs);
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  transition: background .2s, color .2s;
+}
+.ov-input-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.ov-hint {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-3);
+}
+.ov-hint.ok {
+  color: var(--accent);
+}
+.ov-hint.warn {
+  color: var(--warn);
+}
+.ov-hint.bad {
+  color: var(--danger);
+}
+
+/* ── 토글 — 네이티브 checkbox + CSS.
+ * MUI Switch의 ripple/큰 thumb는 머티리얼 고유 시각이라 교체했다.
+ * label로 감싸므로 키보드 포커스·스페이스 토글·스크린리더는 네이티브가 처리한다.
+ */
+
+.ov-toggle {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  flex: none;
+  display: inline-flex;
+  cursor: pointer;
+}
+.ov-toggle input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.ov-toggle-track {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  transition: background .2s, border-color .2s;
+  pointer-events: none;
+}
+.ov-toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-3);
+  transition: transform .2s var(--ease-out), background .2s;
+}
+.ov-toggle input:checked ~ .ov-toggle-track {
+  background: var(--accent-soft-2);
+  border-color: var(--accent);
+}
+.ov-toggle input:checked ~ .ov-toggle-track::after {
+  transform: translateX(16px);
+  background: var(--accent);
+}
+.ov-toggle input:focus-visible ~ .ov-toggle-track {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.ov-toggle input:disabled ~ .ov-toggle-track {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── 알림 (MUI Alert 대체) ─────────────────────────────── */
+
+.ov-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 11px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.ov-alert.error {
+  border-left: 2px solid var(--danger);
+  color: var(--danger);
+}
+.ov-alert.success {
+  border-left: 2px solid var(--accent);
+  color: var(--accent);
+}
+.ov-alert-text {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+.ov-alert .ov-close {
+  width: 20px;
+  height: 20px;
+  margin: -1px -4px 0 0;
+  color: inherit;
+}
+
+/* ── 스피너 (MUI CircularProgress 대체) ───────────────── */
+
+.ov-spin {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.6px solid var(--border-strong);
+  border-top-color: var(--accent);
+  animation: ov-spin .7s linear infinite;
+  flex: none;
+}
+/* accent 배경 위에서는 accent 색 spinner가 안 보이므로 대비를 currentColor로 */
+.ov-btn.primary .ov-spin {
+  border-color: transparent;
+  border-top-color: currentColor;
+  opacity: 0.8;
+}
+.ov-spin.lg {
+  width: 22px;
+  height: 22px;
+  border-width: 2px;
+}
+.ov-spin-center {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0;
+}
+@keyframes ov-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── select (MUI TextField select 대체) ────────────────── */
+
+.ov-input-wrap select {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  padding: 0 18px 0 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  outline: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+/* 네이티브 화살표를 지웠으니 직접 그린다 */
+.ov-input-wrap.select::after {
+  content: "";
+  width: 0;
+  height: 0;
+  margin-right: 6px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid var(--text-3);
+  pointer-events: none;
+  flex: none;
+}
+/* 옵션 목록은 OS가 그리므로 색만 맞춰준다 */
+.ov-input-wrap select option {
+  background: var(--surface);
+  color: var(--text);
+}
+/* datetime-local / number 의 네이티브 위젯 색 */
+.ov-input-wrap input[type="datetime-local"],
+.ov-input-wrap input[type="number"] {
+  color-scheme: inherit;
+}
+
+/* ── 태그 (MUI Chip 대체) ──────────────────────────────── */
+
+.ov-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.ov-tag.accent {
+  border-color: var(--accent-soft-2);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ov-tag.ok {
+  border-color: var(--accent-soft-2);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ov-tag.bad {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ── 카드 (MUI Paper variant="outlined" 대체) ─────────── */
+
+.ov-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.ov-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  flex: none;
+}
+.ov-card-body {
+  padding: 12px;
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.ov-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+.ov-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ov-pre {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+.ov-mono {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+/* ── 표 — MUI Table의 마크업은 유지하고(정렬/sticky) 시각만 토큰으로.
+ * CLAUDE.md의 "Table은 MUI 유지" 경계를 지키면서 폰트/밀도/테두리만 맞춘다.
+ */
+
+.ov-table {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+}
+.ov-table th {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 10px;
+}
+.ov-table td {
+  font-size: 12.5px;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--border);
+  padding: 7px 10px;
+}
+.ov-table tbody tr {
+  cursor: pointer;
+  transition: background .15s;
+}
+.ov-table tbody tr:hover td {
+  background: var(--hover);
+  color: var(--text);
+}
+.ov-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.ov-table td.nowrap {
+  white-space: nowrap;
+}
+.ov-table td.mono {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.ov-table td.center {
+  text-align: center;
+}
+.ov-table td.empty {
+  text-align: center;
+  padding: 40px 10px;
+  color: var(--text-3);
+}

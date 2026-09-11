@@ -28,7 +28,6 @@ interface SessionSidebarProps {
     onToggleFavorite?: (sessionId: string) => void;
 }
 
-const APP_VERSION = process.env.REACT_APP_VERSION || 'v1.5';
 const COLLAPSED_KEY = 'saus-sb-collapsed';
 
 // 세션 갱신일 → 그룹 라벨 ("오늘 / 어제 / 9월 8일 / 2025년 12월 1일"). 날짜가 없으면 방금 만든 세션 → 오늘
@@ -206,7 +205,6 @@ export const SessionSidebar: FC<SessionSidebarProps> = ({
         <aside className={'sb' + (collapsed ? ' collapsed' : '')}>
             <div className="sb-head">
                 <span className="sb-logo sb-x">SAUS</span>
-                <span className="sb-version sb-x">{APP_VERSION}</span>
                 {toggleBtn}
             </div>
 

@@ -93,6 +93,9 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
 
     // 세션별 파일 목록 fetch 시퀀스 카운터 — 동시 다중 갱신에서 stale 응답이 최신을 덮어쓰지 않도록
     const filesFetchSeqRef = useRef<Record<string, number>>({});
+    // 세션 클로저 규칙(핸들러 안에서 currentSessionId 직접 읽기 금지) 때문에 두는 미러.
+    // SSE 콜백이 "지금 보고 있는 세션인지"만 판단하는 용도로 쓴다.
+    const currentSessionIdRef = useRef<string | null>(null);
     // 현재 세션의 업로드 파일 목록 로드 — 세션 변경 시 + Composer 콜백으로 갱신
     const loadSessionFiles = async (sessionId: string) => {
         const seq = (filesFetchSeqRef.current[sessionId] ?? 0) + 1;
@@ -112,6 +115,7 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
     };
 
     useEffect(() => {
+        currentSessionIdRef.current = currentSessionId;
         if (currentSessionId) {
             loadSessionFiles(currentSessionId);
         } else {
@@ -689,6 +693,19 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
             const parsed = parseExtraInfo(extra_info);
             if (parsed) {
                 setExtraInfoMap((prev) => ({ ...prev, [String(msgId)]: parsed }));
+            }
+
+            // 분석 결과 파일이 딸려 왔으면 우측 패널을 자동으로 펼친다.
+            // extraDocs/activeDocKey는 sessionId-keyed가 아니라 세션 전환 시 리셋되는 단일 상태이므로,
+            // 지금 보고 있는 세션이 아닐 때 열면 남의 세션 문서가 뜬다 → ref로 확인 후에만 오픈.
+            const firstArtifact = parsed?.artifacts?.[0];
+            if (firstArtifact && sidParam === currentSessionIdRef.current) {
+                openExtraDoc({
+                    key: firstArtifact.download_url,
+                    title: firstArtifact.filename,
+                    url: firstArtifact.download_url,
+                    kind: 'artifact',
+                });
             }
 
             cleanup();

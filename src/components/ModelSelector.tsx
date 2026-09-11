@@ -1,15 +1,7 @@
 import { FC, useState } from 'react';
-import {
-    Box,
-    Chip,
-    Popover,
-    List,
-    ListItem,
-    ListItemText,
-    Typography,
-    CircularProgress,
-} from '@mui/material';
+import { Popover } from '@mui/material';
 import { IconSparkle, IconCheck } from './icons';
+import './Overlay.css';
 
 interface ModelSelectorProps {
     models: string[];
@@ -17,9 +9,11 @@ interface ModelSelectorProps {
     onModelChange: (model: string | null) => void;
     disabled?: boolean;
     loading?: boolean;
-    renderTrigger?: (open: (e: React.MouseEvent<HTMLElement>) => void, isOpen: boolean, label: string) => React.ReactNode;
+    renderTrigger: (open: (e: React.MouseEvent<HTMLElement>) => void, isOpen: boolean, label: string) => React.ReactNode;
 }
 
+// MUI Popover는 앵커 포지셔닝 / portal / click-away / Esc 만 담당하고,
+// 보이는 것은 Overlay.css의 .ov-* 프리미티브로 그린다 (Composer/SessionSidebar와 같은 치수).
 export const ModelSelector: FC<ModelSelectorProps> = ({
     models,
     selectedModel,
@@ -53,31 +47,7 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
 
     return (
         <>
-            {renderTrigger ? (
-                renderTrigger(handleClick, open, displayLabel)
-            ) : (
-                <Chip
-                    icon={loading ? <CircularProgress size={14} /> : <IconSparkle />}
-                    label={displayLabel}
-                    onClick={handleClick}
-                    disabled={disabled || loading}
-                    variant="outlined"
-                    sx={{
-                        transition: 'all 0.2s ease',
-                        borderColor: selectedModel
-                            ? 'primary.main'
-                            : 'rgba(63, 213, 186, 0.3)',
-                        bgcolor: selectedModel
-                            ? 'rgba(63, 213, 186, 0.1)'
-                            : 'transparent',
-                        '&:hover': {
-                            transform: 'translateY(-2px)',
-                            borderColor: 'primary.main',
-                            bgcolor: 'rgba(63, 213, 186, 0.1)',
-                        },
-                    }}
-                />
-            )}
+            {renderTrigger(handleClick, open, displayLabel)}
 
             <Popover
                 open={open}
@@ -85,66 +55,39 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
                 onClose={handleClose}
                 anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
                 transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-                PaperProps={{
-                    sx: {
-                        minWidth: 220,
-                        maxHeight: 320,
-                        bgcolor: 'background.paper',
-                        color: 'text.primary',
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 'var(--r-md)',
-                        boxShadow: 'var(--shadow-pop)',
-                    },
-                }}
+                // Paper는 껍데기로만 쓴다 — 배경/테두리/그림자는 .ov-pop이 그린다
+                PaperProps={{ sx: { bgcolor: 'transparent', backgroundImage: 'none', boxShadow: 'none', borderRadius: 'var(--r-md)' } }}
             >
-                <Box p={2} pb={1}>
-                    <Box display="flex" alignItems="center" gap={1} mb={1}>
-                        <IconSparkle className="ic-lg" style={{ color: 'var(--accent)' }} />
-                        <Typography variant="subtitle1" fontWeight={600}>
-                            모델 선택
-                        </Typography>
-                    </Box>
-                </Box>
+                <div className="ov-pop" style={{ maxHeight: 360 }}>
+                    <div className="ov-head">
+                        <IconSparkle className="ic-sm" />
+                        <div className="ov-head-text">
+                            <span className="ov-title">모델 선택</span>
+                        </div>
+                        <span className="ov-head-spacer" />
+                        <span className="mono-label">{models.length}</span>
+                    </div>
 
-                <List dense sx={{ pt: 0, pb: 1, overflow: 'auto' }}>
-                    {models.map((model) => (
-                        <ListItem
-                            key={model}
-                            onClick={() => handleSelect(model)}
-                            sx={{
-                                px: 2,
-                                py: 0.75,
-                                cursor: 'pointer',
-                                bgcolor: selectedModel === model
-                                    ? 'rgba(63, 213, 186, 0.15)'
-                                    : 'transparent',
-                                '&:hover': {
-                                    bgcolor: 'rgba(63, 213, 186, 0.08)',
-                                },
-                            }}
-                        >
-                            <ListItemText
-                                primary={
-                                    <Typography
-                                        variant="body2"
-                                        fontWeight={selectedModel === model ? 600 : 400}
-                                        sx={{
-                                            color: selectedModel === model
-                                                ? 'primary.main'
-                                                : 'text.primary',
-                                        }}
+                    <div className="ov-body tight">
+                        {models.length === 0 ? (
+                            <div className="ov-empty">사용 가능한 모델이 없습니다</div>
+                        ) : (
+                            <div className="ov-list">
+                                {models.map((model) => (
+                                    <button
+                                        key={model}
+                                        type="button"
+                                        className={'ov-item' + (selectedModel === model ? ' active' : '')}
+                                        onClick={() => handleSelect(model)}
                                     >
-                                        {model}
-                                    </Typography>
-                                }
-                            />
-                            {selectedModel === model && (
-                                <IconCheck className="ic-lg" style={{ color: 'var(--accent)' }} />
-                            )}
-                        </ListItem>
-                    ))}
-                </List>
+                                        <span className="ov-item-name" title={model}>{model}</span>
+                                        {selectedModel === model && <IconCheck className="ic-sm ic-check" />}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </Popover>
         </>
     );

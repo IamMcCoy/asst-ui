@@ -37,8 +37,7 @@
   visibility: hidden;
   transition: opacity 120ms ease, visibility 0s 120ms;
 }
-.sb.collapsed .sb-logo,
-.sb.collapsed .sb-version {
+.sb.collapsed .sb-logo {
   display: none;
 }
 
@@ -46,9 +45,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-.sb-version {
-  flex: 1;
 }
 .sb-toggle {
   width: 28px;
@@ -77,15 +73,10 @@
   gap: 6px;
 }
 .sb-logo {
+  flex: 1;
   font-weight: 600;
   font-size: 17px;
   letter-spacing: 0.12em;
-}
-.sb-version {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--text-3);
 }
 
 .kbd {

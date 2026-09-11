@@ -1,25 +1,13 @@
 import { FC, useState } from 'react';
-import {
-    Box,
-    Chip,
-    Popover,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemSecondaryAction,
-    Switch,
-    Typography,
-    Divider,
-    Button,
-    CircularProgress,
-} from '@mui/material';
+import { Popover } from '@mui/material';
 import { IconTool } from './icons';
+import './Overlay.css';
 import { toolService } from '../services/api';
 import { Tool } from '../types/api';
 
 interface ToolSelectorProps {
     disabled?: boolean;
-    renderTrigger?: (open: (e: React.MouseEvent<HTMLElement>) => void, isOpen: boolean) => React.ReactNode;
+    renderTrigger: (open: (e: React.MouseEvent<HTMLElement>) => void, isOpen: boolean) => React.ReactNode;
 }
 
 export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false, renderTrigger }) => {
@@ -99,174 +87,86 @@ export const ToolSelector: FC<ToolSelectorProps> = ({ disabled = false, renderTr
 
     return (
         <>
-            {renderTrigger ? (
-                renderTrigger(handleClick, open)
-            ) : (
-                <Chip
-                    icon={<IconTool />}
-                    label="도구 설정"
-                    onClick={handleClick}
-                    disabled={disabled}
-                    variant="outlined"
-                    sx={{
-                        transition: 'all 0.2s ease',
-                        borderColor: 'rgba(63, 213, 186, 0.3)',
-                        '&:hover': {
-                            transform: 'translateY(-2px)',
-                            borderColor: 'primary.main',
-                            bgcolor: 'rgba(63, 213, 186, 0.1)',
-                        },
-                    }}
-                />
-            )}
+            {renderTrigger(handleClick, open)}
 
             <Popover
                 open={open}
                 anchorEl={anchorEl}
                 onClose={handleClose}
-                anchorOrigin={{
-                    vertical: 'top',
-                    horizontal: 'center',
-                }}
-                transformOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'center',
-                }}
-                PaperProps={{
-                    sx: {
-                        width: 320,
-                        maxHeight: 400,
-                        bgcolor: 'background.paper',
-                        color: 'text.primary',
-                        border: '1px solid',
-                        borderColor: 'divider',
-                        borderRadius: 'var(--r-md)',
-                        boxShadow: 'var(--shadow-pop)',
-                    },
-                }}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                // Paper는 껍데기로만 쓴다 — 배경/테두리/그림자는 .ov-pop이 그린다
+                PaperProps={{ sx: { bgcolor: 'transparent', backgroundImage: 'none', boxShadow: 'none', borderRadius: 'var(--r-md)' } }}
             >
-                <Box p={2}>
-                    <Box display="flex" alignItems="center" gap={1} mb={1}>
-                        <IconTool className="ic-lg" style={{ color: 'var(--accent)' }} />
-                        <Typography variant="subtitle1" fontWeight={600}>
-                            도구 설정
-                        </Typography>
-                        <Typography
-                            variant="caption"
-                            sx={{
-                                ml: 'auto',
-                                color: 'text.secondary',
-                                bgcolor: 'rgba(63, 213, 186, 0.1)',
-                                px: 1,
-                                py: 0.5,
-                                borderRadius: '4px',
-                            }}
-                        >
-                            {enabledCount}/{totalCount} 활성화
-                        </Typography>
-                    </Box>
+                <div className="ov-pop" style={{ width: 320, maxHeight: 420 }}>
+                    <div className="ov-head">
+                        <IconTool className="ic-sm" />
+                        <div className="ov-head-text">
+                            <span className="ov-title">도구 설정</span>
+                        </div>
+                        <span className="ov-head-spacer" />
+                        {totalCount > 0 && (
+                            <span className="ov-badge">{enabledCount}/{totalCount}</span>
+                        )}
+                    </div>
 
-                    <Box display="flex" gap={1} mb={2}>
-                        <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={handleEnableAll}
-                            disabled={updating === 'all'}
-                            sx={{
-                                flex: 1,
-                                fontSize: '0.75rem',
-                                borderColor: 'rgba(63, 213, 186, 0.3)',
-                                color: 'primary.main',
-                                '&:hover': {
-                                    borderColor: 'primary.main',
-                                    bgcolor: 'rgba(63, 213, 186, 0.1)',
-                                },
-                            }}
-                        >
-                            전체 활성화
-                        </Button>
-                        <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={handleDisableAll}
-                            disabled={updating === 'all'}
-                            sx={{
-                                flex: 1,
-                                fontSize: '0.75rem',
-                                borderColor: 'rgba(224, 115, 101, 0.3)',
-                                color: '#E07365',
-                                '&:hover': {
-                                    borderColor: '#E07365',
-                                    bgcolor: 'rgba(224, 115, 101, 0.1)',
-                                },
-                            }}
-                        >
-                            전체 비활성화
-                        </Button>
-                    </Box>
-
-                    <Divider sx={{ borderColor: 'rgba(63, 213, 186, 0.1)', mb: 1 }} />
-                </Box>
-
-                {loading ? (
-                    <Box display="flex" justifyContent="center" py={4}>
-                        <CircularProgress size={24} />
-                    </Box>
-                ) : (
-                    <List dense sx={{ pt: 0, pb: 1, maxHeight: 250, overflow: 'auto' }}>
-                        {Object.entries(tools).map(([toolName, tool]) => (
-                            <ListItem
-                                key={toolName}
-                                sx={{
-                                    px: 2,
-                                    py: 0.75,
-                                    '&:hover': {
-                                        bgcolor: 'rgba(63, 213, 186, 0.05)',
-                                    },
-                                }}
+                    <div className="ov-body" style={{ gap: 10, paddingBottom: 10 }}>
+                        <span className="mono-label">답변 생성에 사용할 도구</span>
+                        <div className="ov-btn-row">
+                            <button
+                                type="button"
+                                className="ov-btn accent grow"
+                                onClick={handleEnableAll}
+                                disabled={updating === 'all' || totalCount === 0}
                             >
-                                <ListItemText
-                                    primary={
-                                        <Typography
-                                            variant="body2"
-                                            fontWeight={500}
-                                            sx={{
-                                                color: tool.enabled
-                                                    ? 'text.primary'
-                                                    : 'text.secondary',
-                                            }}
-                                        >
-                                            {toolName}
-                                        </Typography>
-                                    }
-                                />
-                                <ListItemSecondaryAction>
-                                    {updating === toolName ? (
-                                        <CircularProgress size={20} />
-                                    ) : (
-                                        <Switch
-                                            edge="end"
-                                            size="small"
-                                            checked={tool.enabled}
-                                            onChange={() =>
-                                                handleToggleTool(toolName, tool.enabled)
-                                            }
-                                            sx={{
-                                                '& .MuiSwitch-switchBase.Mui-checked': {
-                                                    color: 'primary.main',
-                                                },
-                                                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track':
-                                                    {
-                                                        bgcolor: 'primary.main',
-                                                    },
-                                            }}
-                                        />
-                                    )}
-                                </ListItemSecondaryAction>
-                            </ListItem>
-                        ))}
-                    </List>
-                )}
+                                전체 활성화
+                            </button>
+                            <button
+                                type="button"
+                                className="ov-btn danger grow"
+                                onClick={handleDisableAll}
+                                disabled={updating === 'all' || totalCount === 0}
+                            >
+                                전체 비활성화
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="ov-divider" />
+
+                    <div className="ov-body tight">
+                        {loading ? (
+                            <div className="ov-spin-center"><div className="ov-spin lg" /></div>
+                        ) : totalCount === 0 ? (
+                            <div className="ov-empty">도구 목록을 불러올 수 없습니다</div>
+                        ) : (
+                            <div className="ov-list">
+                                {Object.entries(tools).map(([toolName, tool]) => (
+                                    <div
+                                        key={toolName}
+                                        className={'ov-item static' + (tool.enabled ? '' : ' dim')}
+                                    >
+                                        <span className="ov-item-name" title={toolName}>{toolName}</span>
+                                        {updating === toolName ? (
+                                            <div className="ov-spin" />
+                                        ) : (
+                                            <label className="ov-toggle" title={tool.enabled ? '비활성화' : '활성화'}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={tool.enabled}
+                                                    onChange={() => handleToggleTool(toolName, tool.enabled)}
+                                                    disabled={updating === 'all'}
+                                                    aria-label={toolName}
+                                                />
+                                                <span className="ov-toggle-track" />
+                                            </label>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </Popover>
         </>
     );

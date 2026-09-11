@@ -1,31 +1,16 @@
 import { FC, useState, useEffect, useCallback } from 'react';
 import {
     Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Box,
-    Button,
-    TextField,
-    MenuItem,
-    Stack,
-    Typography,
     Table,
     TableHead,
     TableBody,
     TableRow,
     TableCell,
-    TableContainer,
-    TablePagination,
-    Chip,
-    IconButton,
     Tooltip,
-    Alert,
-    CircularProgress,
-    Paper,
 } from '@mui/material';
 import { IconX, IconRefresh, IconSearch } from './icons';
 import { adminService } from '../services/api';
+import './Overlay.css';
 import { AdminLogItem, AdminLogsQuery } from '../types/api';
 
 interface AdminLogsDialogProps {
@@ -138,14 +123,14 @@ export const AdminLogsDialog: FC<AdminLogsDialogProps> = ({ open, onClose }) => 
         fetchLogs(1, perPage);
     };
 
-    const handleChangePage = (_: unknown, newPage: number) => {
-        // MUI TablePagination는 0-base
-        const nextPage = newPage + 1;
-        setPage(nextPage);
-        fetchLogs(nextPage, perPage);
+    const goToPage = (nextPage: number) => {
+        const target = Math.min(Math.max(1, nextPage), lastPage);
+        if (target === page) return;
+        setPage(target);
+        fetchLogs(target, perPage);
     };
 
-    const handleChangeRowsPerPage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChangeRowsPerPage = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const next = parseInt(e.target.value, 10);
         setPerPage(next);
         setPage(1);
@@ -168,6 +153,9 @@ export const AdminLogsDialog: FC<AdminLogsDialogProps> = ({ open, onClose }) => 
         }
     };
 
+    const rangeFrom = searchCount === 0 ? 0 : (page - 1) * perPage + 1;
+    const rangeTo = Math.min(page * perPage, searchCount);
+
     return (
         <Dialog
             open={open}
@@ -177,356 +165,286 @@ export const AdminLogsDialog: FC<AdminLogsDialogProps> = ({ open, onClose }) => 
             PaperProps={{
                 sx: {
                     height: '90vh',
-                    background: (theme) =>
-                        theme.palette.mode === 'dark'
-                            ? 'linear-gradient(135deg, rgba(22, 29, 36, 0.98) 0%, rgba(14, 20, 25, 0.98) 100%)'
-                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(244, 244, 238, 0.98) 100%)',
-                    border: '1px solid rgba(63, 213, 186, 0.2)',
+                    bgcolor: 'transparent',
+                    backgroundImage: 'none',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--r-lg)',
+                    overflow: 'hidden',
                 },
             }}
         >
-            <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Typography variant="h6" fontWeight={700}>
-                    관리자 — 챗봇 이용 기록
-                </Typography>
-                <IconButton onClick={onClose} size="small">
-                    <IconX className="ic-lg" />
-                </IconButton>
-            </DialogTitle>
+            <div className="ov-dlg" style={{ height: '100%' }}>
+                <div className="ov-head">
+                    <div className="ov-head-text">
+                        <span className="ov-title">챗봇 이용 기록</span>
+                        <span className="mono-label">ADMIN · LOGS</span>
+                    </div>
+                    <span className="ov-head-spacer" />
+                    <button type="button" className="ov-close" onClick={onClose} aria-label="닫기">
+                        <IconX className="ic" />
+                    </button>
+                </div>
 
-            <DialogContent
-                dividers
-                sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 2,
-                    // 다이얼로그 자체에 스크롤이 생기면 스크롤바 유무에 따라 필터/버튼이 시프트됨 → 외부는 고정, 내부 영역만 스크롤
-                    overflow: 'hidden',
-                    minHeight: 0,
-                }}
-            >
-                {/* 필터 영역 — 격자 정렬 + 우측 액션바 */}
-                <Paper variant="outlined" sx={{ p: 2, bgcolor: 'rgba(63, 213, 186, 0.04)', flex: 'none' }}>
-                    <Box
-                        sx={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                            gap: 1.5,
-                            mb: 1.5,
-                        }}
-                    >
-                        <TextField
-                            label="시작 시각"
-                            type="datetime-local"
-                            size="small"
-                            value={toLocalInput(startTime)}
-                            onChange={(e) => setStartTime(toEpochMs(e.target.value))}
-                            InputLabelProps={{ shrink: true }}
-                            fullWidth
-                        />
-                        <TextField
-                            label="종료 시각"
-                            type="datetime-local"
-                            size="small"
-                            value={toLocalInput(endTime)}
-                            onChange={(e) => setEndTime(toEpochMs(e.target.value))}
-                            InputLabelProps={{ shrink: true }}
-                            fullWidth
-                        />
-                        <TextField
-                            label="키워드"
-                            size="small"
-                            value={keyword}
-                            onChange={(e) => setKeyword(e.target.value)}
-                            placeholder="질문/응답에서 검색"
-                            fullWidth
-                        />
-                        <TextField
-                            label="user_id"
-                            size="small"
-                            value={filterUserId}
-                            onChange={(e) => setFilterUserId(e.target.value)}
-                            fullWidth
-                        />
-                        <TextField
-                            label="session_id"
-                            size="small"
-                            value={filterSessionId}
-                            onChange={(e) => setFilterSessionId(e.target.value)}
-                            fullWidth
-                        />
-                        <TextField
-                            label="도구 이름"
-                            size="small"
-                            value={toolName}
-                            onChange={(e) => setToolName(e.target.value)}
-                            placeholder="예: chat (비우면 전체)"
-                            fullWidth
-                        />
-                        <TextField
-                            select
-                            label="처리 결과"
-                            size="small"
-                            value={processSuccess}
-                            onChange={(e) => setProcessSuccess(e.target.value as '' | '0' | '1')}
-                            fullWidth
-                        >
-                            <MenuItem value="">전체</MenuItem>
-                            <MenuItem value="1">성공</MenuItem>
-                            <MenuItem value="0">실패</MenuItem>
-                        </TextField>
-                    </Box>
-                    <Stack direction="row" alignItems="center" gap={1.5}>
-                        <TextField
-                            select
-                            label="정렬 기준"
-                            size="small"
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value)}
-                            sx={{ minWidth: 160 }}
-                        >
-                            <MenuItem value="question_dt">시간</MenuItem>
-                            <MenuItem value="user_id">사용자</MenuItem>
-                            <MenuItem value="session_id">세션</MenuItem>
-                            <MenuItem value="tool_name">도구</MenuItem>
-                            <MenuItem value="process_success">결과</MenuItem>
-                        </TextField>
-                        <TextField
-                            select
-                            label="정렬 방향"
-                            size="small"
-                            value={sortDir}
-                            onChange={(e) => setSortDir(e.target.value as 'ASC' | 'DESC')}
-                            sx={{ minWidth: 240 }}
-                        >
-                            <MenuItem value="DESC">내림차순 (최신/큰 값부터)</MenuItem>
-                            <MenuItem value="ASC">오름차순 (오래된/작은 값부터)</MenuItem>
-                        </TextField>
+                {/* 외부는 고정, 내부 영역만 스크롤 — 스크롤바 유무로 필터가 시프트되지 않게 */}
+                <div className="ov-body" style={{ gap: 10, overflow: 'hidden', flex: 1 }}>
+                    {/* 필터 */}
+                    <div className="ov-card" style={{ flex: 'none' }}>
+                        <div className="ov-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12, overflow: 'visible' }}>
+                            <div className="ov-grid">
+                                <div className="ov-field">
+                                    <span className="mono-label">시작 시각</span>
+                                    <div className="ov-input-wrap">
+                                        <input
+                                            type="datetime-local"
+                                            value={toLocalInput(startTime)}
+                                            onChange={(e) => setStartTime(toEpochMs(e.target.value))}
+                                            aria-label="시작 시각"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="ov-field">
+                                    <span className="mono-label">종료 시각</span>
+                                    <div className="ov-input-wrap">
+                                        <input
+                                            type="datetime-local"
+                                            value={toLocalInput(endTime)}
+                                            onChange={(e) => setEndTime(toEpochMs(e.target.value))}
+                                            aria-label="종료 시각"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="ov-field">
+                                    <span className="mono-label">키워드</span>
+                                    <div className="ov-input-wrap">
+                                        <input
+                                            value={keyword}
+                                            onChange={(e) => setKeyword(e.target.value)}
+                                            placeholder="질문/응답에서 검색"
+                                            aria-label="키워드"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="ov-field">
+                                    <span className="mono-label">user_id</span>
+                                    <div className="ov-input-wrap">
+                                        <input value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)} aria-label="user_id" />
+                                    </div>
+                                </div>
+                                <div className="ov-field">
+                                    <span className="mono-label">session_id</span>
+                                    <div className="ov-input-wrap">
+                                        <input value={filterSessionId} onChange={(e) => setFilterSessionId(e.target.value)} aria-label="session_id" />
+                                    </div>
+                                </div>
+                                <div className="ov-field">
+                                    <span className="mono-label">도구 이름</span>
+                                    <div className="ov-input-wrap">
+                                        <input
+                                            value={toolName}
+                                            onChange={(e) => setToolName(e.target.value)}
+                                            placeholder="예: chat (비우면 전체)"
+                                            aria-label="도구 이름"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="ov-field">
+                                    <span className="mono-label">처리 결과</span>
+                                    <div className="ov-input-wrap select">
+                                        <select
+                                            value={processSuccess}
+                                            onChange={(e) => setProcessSuccess(e.target.value as '' | '0' | '1')}
+                                            aria-label="처리 결과"
+                                        >
+                                            <option value="">전체</option>
+                                            <option value="1">성공</option>
+                                            <option value="0">실패</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
 
-                        <Box flex={1} />
+                            <div className="ov-bar">
+                                <div className="ov-field" style={{ minWidth: 150 }}>
+                                    <span className="mono-label">정렬 기준</span>
+                                    <div className="ov-input-wrap select">
+                                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="정렬 기준">
+                                            <option value="question_dt">시간</option>
+                                            <option value="user_id">사용자</option>
+                                            <option value="session_id">세션</option>
+                                            <option value="tool_name">도구</option>
+                                            <option value="process_success">결과</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="ov-field" style={{ minWidth: 230 }}>
+                                    <span className="mono-label">정렬 방향</span>
+                                    <div className="ov-input-wrap select">
+                                        <select
+                                            value={sortDir}
+                                            onChange={(e) => setSortDir(e.target.value as 'ASC' | 'DESC')}
+                                            aria-label="정렬 방향"
+                                        >
+                                            <option value="DESC">내림차순 (최신/큰 값부터)</option>
+                                            <option value="ASC">오름차순 (오래된/작은 값부터)</option>
+                                        </select>
+                                    </div>
+                                </div>
 
-                        <Tooltip title="새로고침" arrow>
-                            <span>
-                                <IconButton
-                                    onClick={() => fetchLogs()}
-                                    disabled={loading}
-                                    size="small"
-                                    sx={{
-                                        border: '1px solid',
-                                        borderColor: 'divider',
-                                        borderRadius: 1.5,
-                                    }}
-                                >
-                                    <IconRefresh />
-                                </IconButton>
-                            </span>
-                        </Tooltip>
-                        <Button
-                            variant="contained"
-                            startIcon={<IconSearch />}
-                            onClick={handleSearch}
-                            disabled={loading}
-                            disableElevation
-                        >
-                            검색
-                        </Button>
-                    </Stack>
-                </Paper>
+                                <span className="ov-head-spacer" />
 
-                {error && (
-                    <Alert severity="error" onClose={() => setError(null)}>
-                        {error}
-                    </Alert>
-                )}
+                                <Tooltip title="새로고침" arrow>
+                                    <span>
+                                        <button type="button" className="ov-btn" onClick={() => fetchLogs()} disabled={loading} aria-label="새로고침">
+                                            <IconRefresh className="ic-sm" />
+                                        </button>
+                                    </span>
+                                </Tooltip>
+                                <button type="button" className="ov-btn primary" onClick={handleSearch} disabled={loading}>
+                                    {loading ? <div className="ov-spin" /> : <IconSearch className="ic-sm" />}
+                                    검색
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
-                <Typography variant="body2" color="text.secondary" sx={{ flex: 'none' }}>
-                    기간 전체: <strong>{totalCount.toLocaleString()}</strong>건 / 필터 적용:{' '}
-                    <strong>{searchCount.toLocaleString()}</strong>건
-                </Typography>
+                    {error && (
+                        <div className="ov-alert error" style={{ flex: 'none' }}>
+                            <span className="ov-alert-text">{error}</span>
+                            <button type="button" className="ov-close" onClick={() => setError(null)} aria-label="닫기">
+                                <IconX className="ic-sm" />
+                            </button>
+                        </div>
+                    )}
 
-                {/* 결과 표 */}
-                <TableContainer component={Paper} variant="outlined" sx={{ flex: 1, minHeight: 0 }}>
-                    <Table size="small" stickyHeader>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ whiteSpace: 'nowrap' }}>시각</TableCell>
-                                <TableCell>user_id</TableCell>
-                                <TableCell>session_id</TableCell>
-                                <TableCell>tool</TableCell>
-                                <TableCell>질문</TableCell>
-                                <TableCell>응답</TableCell>
-                                <TableCell align="center">결과</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
+                    <div className="ov-hint" style={{ flex: 'none' }}>
+                        기간 전체 <strong>{totalCount.toLocaleString()}</strong>건 · 필터 적용{' '}
+                        <strong>{searchCount.toLocaleString()}</strong>건
+                    </div>
+
+                    {/* 결과 표 — MUI Table 골격 유지(stickyHeader), 시각은 .ov-table */}
+                    <div className="ov-table">
+                        <Table size="small" stickyHeader>
+                            <TableHead>
                                 <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                                        <CircularProgress size={28} />
-                                    </TableCell>
+                                    <TableCell>시각</TableCell>
+                                    <TableCell>user_id</TableCell>
+                                    <TableCell>session_id</TableCell>
+                                    <TableCell>tool</TableCell>
+                                    <TableCell>질문</TableCell>
+                                    <TableCell>응답</TableCell>
+                                    <TableCell align="center">결과</TableCell>
                                 </TableRow>
-                            ) : items.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                                        <Typography variant="body2" color="text.secondary">
-                                            조회된 기록이 없습니다.
-                                        </Typography>
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                items.map((row, idx) => (
-                                    <TableRow
-                                        key={(row.log_id as any) ?? `${row.session_id}-${idx}`}
-                                        hover
-                                        onClick={() => setSelected(row)}
-                                        sx={{ cursor: 'pointer' }}
-                                    >
-                                        <TableCell sx={{ whiteSpace: 'nowrap', fontFamily: 'monospace' }}>
-                                            {formatDt(row.question_dt as any)}
-                                        </TableCell>
-                                        <TableCell>{row.user_id}</TableCell>
-                                        <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                                            {truncate(row.session_id, 12)}
-                                        </TableCell>
-                                        <TableCell>
-                                            {row.tool_name == null ? (
-                                                <Chip label="chat" size="small" variant="outlined" />
-                                            ) : (
-                                                <Chip label={String(row.tool_name)} size="small" color="primary" variant="outlined" />
-                                            )}
-                                        </TableCell>
-                                        <TableCell sx={{ maxWidth: 260 }}>{truncate(row.question, 80)}</TableCell>
-                                        <TableCell sx={{ maxWidth: 320 }}>{truncate(row.response, 100)}</TableCell>
-                                        <TableCell align="center">
-                                            {row.process_success === 1 ? (
-                                                <Chip label="성공" size="small" color="success" />
-                                            ) : row.process_success === 0 ? (
-                                                <Chip label="실패" size="small" color="error" />
-                                            ) : (
-                                                <Chip label="-" size="small" variant="outlined" />
-                                            )}
+                            </TableHead>
+                            <TableBody>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="empty">
+                                            <div className="ov-spin-center" style={{ padding: 0 }}><div className="ov-spin lg" /></div>
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                                ) : items.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="empty">조회된 기록이 없습니다.</TableCell>
+                                    </TableRow>
+                                ) : (
+                                    items.map((row, idx) => (
+                                        <TableRow
+                                            key={(row.log_id as any) ?? `${row.session_id}-${idx}`}
+                                            onClick={() => setSelected(row)}
+                                        >
+                                            <TableCell className="nowrap mono">{formatDt(row.question_dt as any)}</TableCell>
+                                            <TableCell>{row.user_id}</TableCell>
+                                            <TableCell className="mono">{truncate(row.session_id, 12)}</TableCell>
+                                            <TableCell>
+                                                <span className={'ov-tag' + (row.tool_name == null ? '' : ' accent')}>
+                                                    {row.tool_name == null ? 'chat' : String(row.tool_name)}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell style={{ maxWidth: 260 }}>{truncate(row.question, 80)}</TableCell>
+                                            <TableCell style={{ maxWidth: 320 }}>{truncate(row.response, 100)}</TableCell>
+                                            <TableCell className="center">
+                                                {row.process_success === 1 ? (
+                                                    <span className="ov-tag ok">성공</span>
+                                                ) : row.process_success === 0 ? (
+                                                    <span className="ov-tag bad">실패</span>
+                                                ) : (
+                                                    <span className="ov-tag">-</span>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
 
-                <Stack
-                    direction="row"
-                    alignItems="center"
-                    flexWrap="wrap"
-                    sx={{
-                        borderTop: '1px solid',
-                        borderColor: 'divider',
-                        pt: 1,
-                        flex: 'none',
-                    }}
-                >
-                    <TablePagination
-                        component="div"
-                        count={searchCount}
-                        page={Math.max(0, page - 1)}
-                        onPageChange={handleChangePage}
-                        rowsPerPage={perPage}
-                        onRowsPerPageChange={handleChangeRowsPerPage}
-                        rowsPerPageOptions={[10, 20, 50, 100, 200]}
-                        labelRowsPerPage="페이지당 항목 수"
-                        labelDisplayedRows={({ from, to, count }) =>
-                            `${from}–${to} / ${count !== -1 ? count : `${to} 이상`}`
-                        }
-                        sx={{ borderTop: 'none', flex: 1 }}
-                    />
-                    <Stack direction="row" alignItems="center" gap={1} sx={{ pr: 2 }}>
-                        <Typography variant="body2" color="text.secondary">
-                            페이지 이동
-                        </Typography>
-                        <TextField
-                            size="small"
-                            value={pageInput}
-                            onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ''))}
-                            onKeyDown={handlePageJumpKey}
-                            placeholder={String(page)}
-                            inputProps={{
-                                inputMode: 'numeric',
-                                style: { textAlign: 'center', width: 56 },
-                                'aria-label': '페이지 번호',
-                            }}
-                        />
-                        <Typography variant="body2" color="text.secondary">
-                            / {lastPage.toLocaleString()}
-                        </Typography>
-                        <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={handlePageJump}
-                            disabled={loading || !pageInput}
-                        >
+                    {/* 페이지 바 — MUI TablePagination(머티리얼 셀렉트 + 라벨) 대체 */}
+                    <div className="ov-bar" style={{ flex: 'none', borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                        <div className="ov-input-wrap select" style={{ width: 116, flex: 'none' }}>
+                            <select value={perPage} onChange={handleChangeRowsPerPage} aria-label="페이지당 항목 수">
+                                {[10, 20, 50, 100, 200].map((n) => (
+                                    <option key={n} value={n}>{n}개씩</option>
+                                ))}
+                            </select>
+                        </div>
+                        <span className="ov-hint">
+                            {rangeFrom.toLocaleString()}–{rangeTo.toLocaleString()} / {searchCount.toLocaleString()}
+                        </span>
+
+                        <span className="ov-head-spacer" />
+
+                        <button type="button" className="ov-btn" onClick={() => goToPage(page - 1)} disabled={loading || page <= 1}>
+                            이전
+                        </button>
+                        <div className="ov-input-wrap" style={{ width: 64, flex: 'none' }}>
+                            <input
+                                value={pageInput}
+                                onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ''))}
+                                onKeyDown={handlePageJumpKey}
+                                placeholder={String(page)}
+                                inputMode="numeric"
+                                style={{ textAlign: 'center' }}
+                                aria-label="페이지 번호"
+                            />
+                        </div>
+                        <span className="ov-hint">/ {lastPage.toLocaleString()}</span>
+                        <button type="button" className="ov-btn" onClick={handlePageJump} disabled={loading || !pageInput}>
                             이동
-                        </Button>
-                    </Stack>
-                </Stack>
+                        </button>
+                        <button type="button" className="ov-btn" onClick={() => goToPage(page + 1)} disabled={loading || page >= lastPage}>
+                            다음
+                        </button>
+                    </div>
 
-                {/* 선택된 행의 상세 보기 — 항상 같은 영역 차지(고정 max-height + 내부 스크롤)로 외부 레이아웃 안흔들림 */}
-                {selected && (
-                    <Paper
-                        variant="outlined"
-                        sx={{
-                            bgcolor: 'rgba(63, 213, 186, 0.04)',
-                            flex: 'none',
-                            maxHeight: 260,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            overflow: 'hidden',
-                        }}
-                    >
-                        <Box
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="space-between"
-                            sx={{
-                                px: 2,
-                                py: 1,
-                                borderBottom: '1px solid',
-                                borderColor: 'divider',
-                                flex: 'none',
-                            }}
-                        >
-                            <Typography variant="subtitle2" fontWeight={700}>
-                                상세
-                            </Typography>
-                            <IconButton size="small" onClick={() => setSelected(null)} aria-label="상세 닫기">
-                                <IconX />
-                            </IconButton>
-                        </Box>
-                        <Box sx={{ p: 2, overflow: 'auto', flex: 1, minHeight: 0 }}>
-                            <Stack spacing={1}>
-                                <Typography variant="caption" color="text.secondary">
+                    {/* 선택된 행 상세 — 고정 max-height + 내부 스크롤로 외부 레이아웃 유지 */}
+                    {selected && (
+                        <div className="ov-card" style={{ flex: 'none', maxHeight: 260 }}>
+                            <div className="ov-card-head">
+                                <span className="mono-label">상세</span>
+                                <span className="ov-head-spacer" />
+                                <button type="button" className="ov-close" onClick={() => setSelected(null)} aria-label="상세 닫기">
+                                    <IconX className="ic-sm" />
+                                </button>
+                            </div>
+                            <div className="ov-card-body">
+                                <div className="ov-hint" style={{ marginBottom: 10 }}>
                                     {formatDt(selected.question_dt as any)} · {selected.user_id} ·{' '}
-                                    <span style={{ fontFamily: 'monospace' }}>{selected.session_id}</span>
-                                </Typography>
-                                <Typography variant="body2" component="div">
-                                    <strong>질문</strong>
-                                    <Box component="pre" sx={{ m: 0, mt: 0.5, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-                                        {String(selected.question ?? '')}
-                                    </Box>
-                                </Typography>
-                                <Typography variant="body2" component="div">
-                                    <strong>응답</strong>
-                                    <Box component="pre" sx={{ m: 0, mt: 0.5, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-                                        {String(selected.response ?? '')}
-                                    </Box>
-                                </Typography>
-                            </Stack>
-                        </Box>
-                    </Paper>
-                )}
-            </DialogContent>
+                                    <span className="ov-mono">{selected.session_id}</span>
+                                </div>
+                                <span className="mono-label">질문</span>
+                                <pre className="ov-pre">{String(selected.question ?? '')}</pre>
+                                <div style={{ height: 12 }} />
+                                <span className="mono-label">응답</span>
+                                <pre className="ov-pre">{String(selected.response ?? '')}</pre>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
-            <DialogActions>
-                <Button onClick={onClose}>닫기</Button>
-            </DialogActions>
+                <div className="ov-foot">
+                    <button type="button" className="ov-btn" onClick={onClose}>닫기</button>
+                </div>
+            </div>
         </Dialog>
     );
 };

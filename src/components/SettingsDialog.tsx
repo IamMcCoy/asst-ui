@@ -1,20 +1,8 @@
 import { FC, useState, useEffect } from 'react';
-import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    Button,
-    Box,
-    Typography,
-    IconButton,
-    Alert,
-    CircularProgress,
-    InputAdornment,
-} from '@mui/material';
+import { Dialog } from '@mui/material';
 import { IconX, IconSave, IconEye, IconEyeOff } from './icons';
 import { apiKeyService } from '../services/api';
+import './Overlay.css';
 
 interface SettingsDialogProps {
     open: boolean;
@@ -34,15 +22,6 @@ const SERVICES: { id: string; label: string }[] = [
 
 const emptyKeys = () => Object.fromEntries(SERVICES.map((s) => [s.id, ''])) as Record<string, string>;
 
-const fieldSx = {
-    '& .MuiOutlinedInput-root': {
-        borderRadius: '12px',
-        bgcolor: 'rgba(63, 213, 186, 0.05)',
-        '& fieldset': { borderColor: 'rgba(63, 213, 186, 0.2)' },
-        '&:hover fieldset': { borderColor: 'rgba(63, 213, 186, 0.4)' },
-        '&.Mui-focused fieldset': { borderColor: 'primary.main' },
-    },
-};
 
 export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId }) => {
     const [keys, setKeys] = useState<Record<string, string>>(emptyKeys);
@@ -131,154 +110,93 @@ export const SettingsDialog: FC<SettingsDialogProps> = ({ open, onClose, userId 
             onClose={handleClose}
             maxWidth="sm"
             fullWidth
-            PaperProps={{
-                sx: {
-                    background: (theme) =>
-                        theme.palette.mode === 'dark'
-                            ? 'linear-gradient(135deg, rgba(22, 29, 36, 0.98) 0%, rgba(14, 20, 25, 0.98) 100%)'
-                            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(244, 244, 238, 0.98) 100%)',
-                    backdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(63, 213, 186, 0.2)',
-                    borderRadius: '16px',
-                },
-            }}
+            // Paper는 모달 껍데기 — 보이는 것은 .ov-dlg가 그린다
+            PaperProps={{ sx: { bgcolor: 'transparent', backgroundImage: 'none', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', overflow: 'hidden' } }}
         >
-            <DialogTitle
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    pb: 2,
-                    borderBottom: '1px solid rgba(63, 213, 186, 0.1)',
-                }}
-            >
-                <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600, letterSpacing: '-0.02em' }}>
-                        외부 인텔리전스 연동
-                    </Typography>
-                    <Typography className="mono-label" sx={{ display: 'block', mt: 0.5 }}>
-                        TI 소스 API 키
-                    </Typography>
-                </Box>
-                <IconButton
-                    onClick={handleClose}
-                    disabled={saving}
-                    sx={{
-                        color: 'text.secondary',
-                        '&:hover': { bgcolor: 'rgba(63, 213, 186, 0.1)', color: 'primary.main' },
-                    }}
-                >
-                    <IconX className="ic-lg" />
-                </IconButton>
-            </DialogTitle>
+            <div className="ov-dlg">
+                <div className="ov-head">
+                    <div className="ov-head-text">
+                        <span className="ov-title">외부 인텔리전스 연동</span>
+                        <span className="mono-label">TI 소스 API 키</span>
+                    </div>
+                    <span className="ov-head-spacer" />
+                    <button type="button" className="ov-close" onClick={handleClose} disabled={saving} aria-label="닫기">
+                        <IconX className="ic" />
+                    </button>
+                </div>
 
-            <DialogContent sx={{ pt: 3 }}>
-                {loading ? (
-                    <Box display="flex" justifyContent="center" alignItems="center" py={4}>
-                        <CircularProgress />
-                    </Box>
-                ) : (
-                    <Box display="flex" flexDirection="column" gap={2.5}>
-                        {error && (
-                            <Alert
-                                severity="error"
-                                onClose={() => setError(null)}
-                                sx={{
-                                    borderRadius: '12px',
-                                    background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%)',
-                                    border: '1px solid rgba(239, 68, 68, 0.2)',
-                                }}
-                            >
-                                {error}
-                            </Alert>
-                        )}
+                <div className="ov-body" style={{ maxHeight: '65vh' }}>
+                    {error && (
+                        <div className="ov-alert error">
+                            <span className="ov-alert-text">{error}</span>
+                            <button type="button" className="ov-close" onClick={() => setError(null)} aria-label="닫기">
+                                <IconX className="ic-sm" />
+                            </button>
+                        </div>
+                    )}
+                    {success && (
+                        <div className="ov-alert success">
+                            <span className="ov-alert-text">API 키가 저장되었습니다.</span>
+                        </div>
+                    )}
 
-                        {success && (
-                            <Alert
-                                severity="success"
-                                sx={{
-                                    borderRadius: '12px',
-                                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.05) 100%)',
-                                    border: '1px solid rgba(34, 197, 94, 0.2)',
-                                }}
-                            >
-                                API 키가 성공적으로 저장되었습니다!
-                            </Alert>
-                        )}
+                    <div className="ov-note">
+                        <span className="ov-note-text">
+                            IP 분석에 사용하는 외부 위협 인텔리전스 소스의 API 키를 등록하세요.
+                            등록된 키를 빈 값으로 저장하면 삭제됩니다.
+                        </span>
+                    </div>
 
-                        <Box>
-                            <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary', fontWeight: 600 }}>
-                                TI 소스 API 키
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                                IP 분석에 사용하는 외부 위협 인텔리전스 소스의 API 키를 등록하세요. 등록된 키를 빈 값으로 저장하면 삭제됩니다.
-                            </Typography>
-                        </Box>
+                    {loading ? (
+                        <div className="ov-spin-center"><div className="ov-spin lg" /></div>
+                    ) : (
+                        SERVICES.map(({ id, label }) => {
+                            const filled = keys[id].trim().length > 0;
+                            return (
+                                <div className="ov-field" key={id}>
+                                    <div className="ov-field-label">
+                                        <span className="mono-label">{label}</span>
+                                        {registered.has(id) && (
+                                            <span className={'ov-hint ' + (filled ? 'ok' : 'warn')}>
+                                                {filled ? '등록됨' : '빈 값으로 저장하면 삭제됩니다'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="ov-input-wrap">
+                                        <input
+                                            type={visible.has(id) ? 'text' : 'password'}
+                                            value={keys[id]}
+                                            onChange={(e) => setKeys((prev) => ({ ...prev, [id]: e.target.value }))}
+                                            placeholder={`${label} API 키`}
+                                            autoComplete="off"
+                                            disabled={saving}
+                                            aria-label={`${label} API Key`}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="ov-input-btn"
+                                            onClick={() => toggleVisible(id)}
+                                            aria-label={visible.has(id) ? '키 숨기기' : '키 보기'}
+                                            title={visible.has(id) ? '숨기기' : '보기'}
+                                        >
+                                            {visible.has(id) ? <IconEyeOff className="ic-sm" /> : <IconEye className="ic-sm" />}
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
 
-                        {SERVICES.map(({ id, label }) => (
-                            <TextField
-                                key={id}
-                                label={`${label} API Key`}
-                                type={visible.has(id) ? 'text' : 'password'}
-                                value={keys[id]}
-                                onChange={(e) => setKeys((prev) => ({ ...prev, [id]: e.target.value }))}
-                                fullWidth
-                                variant="outlined"
-                                autoComplete="off"
-                                placeholder={`${label} API 키를 입력하세요`}
-                                disabled={saving}
-                                helperText={
-                                    registered.has(id)
-                                        ? keys[id].trim() ? '등록됨' : '빈 값으로 저장하면 이 키가 삭제됩니다'
-                                        : ''
-                                }
-                                InputProps={{
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                size="small"
-                                                onClick={() => toggleVisible(id)}
-                                                aria-label={visible.has(id) ? '키 숨기기' : '키 보기'}
-                                                edge="end"
-                                            >
-                                                {visible.has(id) ? <IconEyeOff className="ic-sm" /> : <IconEye className="ic-sm" />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                                sx={fieldSx}
-                            />
-                        ))}
-                    </Box>
-                )}
-            </DialogContent>
-
-            <DialogActions sx={{ p: 3, pt: 2, borderTop: '1px solid rgba(63, 213, 186, 0.1)' }}>
-                <Button
-                    onClick={handleClose}
-                    disabled={saving}
-                    sx={{ color: 'text.secondary', '&:hover': { bgcolor: 'rgba(148, 163, 184, 0.1)' } }}
-                >
-                    취소
-                </Button>
-                <Button
-                    onClick={handleSave}
-                    variant="contained"
-                    disabled={saving || loading}
-                    startIcon={saving ? <CircularProgress size={16} /> : <IconSave />}
-                    sx={{
-                        background: 'linear-gradient(135deg, #3FD5BA 0%, #1A8B7E 100%)',
-                        boxShadow: '0 4px 14px 0 rgba(63, 213, 186, 0.4)',
-                        '&:hover': {
-                            background: 'linear-gradient(135deg, #5FE2C9 0%, #3FD5BA 100%)',
-                            boxShadow: '0 6px 20px 0 rgba(63, 213, 186, 0.6)',
-                        },
-                        '&:disabled': { background: 'rgba(63, 213, 186, 0.3)', color: 'rgba(255, 255, 255, 0.5)' },
-                    }}
-                >
-                    {saving ? '저장 중...' : '저장'}
-                </Button>
-            </DialogActions>
+                <div className="ov-foot">
+                    <button type="button" className="ov-btn" onClick={handleClose} disabled={saving}>
+                        취소
+                    </button>
+                    <button type="button" className="ov-btn primary" onClick={handleSave} disabled={saving || loading}>
+                        {saving ? <><div className="ov-spin" />저장 중…</> : <><IconSave className="ic-sm" />저장</>}
+                    </button>
+                </div>
+            </div>
         </Dialog>
     );
 };
