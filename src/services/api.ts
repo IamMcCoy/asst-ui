@@ -148,7 +148,7 @@ export const dispatchSseEvent = (
         case 'final': {
             const answer = payload?.answer;
             const extra_info = payload?.extra_info ?? '';
-            const messageId = payload?.message_id ?? null;
+            const messageId = payload?.metadata?.message_id ?? null;
             if (answer && typeof answer === 'string' && answer.trim().length > 0) {
                 const trimmed = answer.trim();
                 if (trimmed.startsWith('{') || trimmed.startsWith('[')) {

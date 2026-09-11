@@ -223,7 +223,8 @@ export const ChatMessage: FC<ChatMessageProps> = ({
                     </div>
                 )}
 
-                {!streaming && (
+                {/* ponytail: message_id > INT32_MAX(2147483647)는 취소된 task 등에서 쓰는 Date.now() 폴백 id — 서버 DB row가 없어 피드백을 못 남김 */}
+                {!streaming && message.message_id <= 2147483647 && (
                     <div className={'msg-actions' + (localFeedback ? ' is-active' : '')}>
                         <Tooltip title="도움이 되었습니다" arrow>
                             <button

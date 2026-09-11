@@ -2,7 +2,7 @@
 
 # Variables - can be overridden via command line
 IMAGE_NAME ?= saus-frontend
-TAG ?= v1.5.1
+TAG ?= v1.5.2
 CONTAINER_NAME ?= saus-frontend-container
 PORT ?= 80
 HOST_PORT ?= 8080
