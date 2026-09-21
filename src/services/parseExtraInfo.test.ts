@@ -2,13 +2,14 @@ import { test, expect } from '@jest/globals';
 import { parseExtraInfo } from './api';
 
 // final 이벤트의 extra_info: viz 필드 + "<도구명>:<call_id>" 키 혼재 → 한 구조로 정규화
-test('text2seql / analyze_ip / analyze_weblog 키를 수집한다', () => {
+test('text2seql / analyze_ip / analyze_weblog / create_report 키를 수집한다', () => {
     const info = parseExtraInfo({
         viz_type: 'table',
         query_result: [{ a: 1 }],
         'text2seql:call_1': { seql: 'SELECT * FROM x' },
         'analyze_ip:call_2': { filename: 'ip.json', bytes: 10, expires_at: '2026-09-02T12:00:00+09:00', download_url: 'http://h/a/ip.json' },
         'analyze_weblog:call_3': { download_url: 'http://h/a/wl.json' },
+        'create_report:call_5': { filename: '보고서.pdf', download_url: 'http://h/scribe/v1/artifacts/01M/download?f=pdf' },
         'other_tool:call_4': { seql: 'ignored' },
     });
     expect(info?.viz_type).toBe('table');
@@ -16,6 +17,7 @@ test('text2seql / analyze_ip / analyze_weblog 키를 수집한다', () => {
     expect(info?.artifacts?.map((a) => [a.tool, a.filename])).toEqual([
         ['analyze_ip', 'ip.json'],
         ['analyze_weblog', 'wl.json'],
+        ['create_report', '보고서.pdf'],
     ]);
 });
 

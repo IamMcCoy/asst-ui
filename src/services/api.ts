@@ -642,7 +642,7 @@ const isHttpUrl = (value: unknown): value is string => {
 };
 
 // extra_info 정규화 — final 이벤트와 히스토리(extra-info API) 양쪽에서 공용.
-// 최상위 viz_* 필드 + "<도구명>:<call_id>" 키(text2seql / analyze_ip / analyze_weblog)를 한 구조로 모은다.
+// 최상위 viz_* 필드 + "<도구명>:<call_id>" 키(text2seql / analyze_ip / analyze_weblog / create_report)를 한 구조로 모은다.
 export const parseExtraInfo = (raw: unknown): ExtraInfo | null => {
     let obj: any = raw;
     if (typeof raw === 'string') {
@@ -662,7 +662,7 @@ export const parseExtraInfo = (raw: unknown): ExtraInfo | null => {
         const v: any = value;
         if (tool === 'text2seql' && typeof v?.seql === 'string' && v.seql.trim()) {
             (info.seql ??= []).push(v.seql);
-        } else if ((tool === 'analyze_ip' || tool === 'analyze_weblog') && isHttpUrl(v?.download_url)) {
+        } else if ((tool === 'analyze_ip' || tool === 'analyze_weblog' || tool === 'create_report') && isHttpUrl(v?.download_url)) {
             // download_url은 <a href>로 그대로 렌더되므로 http(s) 외 스킴(javascript:/data: 등)은 여기서 차단
             (info.artifacts ??= []).push({
                 tool,

@@ -149,7 +149,7 @@ export interface ExtraInfo {
 }
 
 export interface AnalysisArtifact {
-    tool: 'analyze_ip' | 'analyze_weblog';
+    tool: 'analyze_ip' | 'analyze_weblog' | 'create_report';
     filename: string;
     bytes?: number;
     expires_at?: string;
