@@ -698,7 +698,9 @@ export const Chatbot: FC<ChatbotProps> = ({ userId }) => {
             // 분석 결과 파일이 딸려 왔으면 우측 패널을 자동으로 펼친다.
             // extraDocs/activeDocKey는 sessionId-keyed가 아니라 세션 전환 시 리셋되는 단일 상태이므로,
             // 지금 보고 있는 세션이 아닐 때 열면 남의 세션 문서가 뜬다 → ref로 확인 후에만 오픈.
-            const firstArtifact = parsed?.artifacts?.[0];
+            // 패널 미리보기는 PDF만 가능하므로 PDF가 있으면 그것을 연다 (create_report의 docx+pdf 쌍)
+            const artifacts = parsed?.artifacts ?? [];
+            const firstArtifact = artifacts.find((a) => /\.pdf$/i.test(a.filename)) ?? artifacts[0];
             if (firstArtifact && sidParam === currentSessionIdRef.current) {
                 openExtraDoc({
                     key: firstArtifact.download_url,

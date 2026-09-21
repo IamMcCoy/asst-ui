@@ -31,7 +31,7 @@ const isPdfLink = (href: string) => /\.pdf(#page=\d+)?$/i.test(href);
 const ArtifactCard: FC<{ artifact: AnalysisArtifact; onOpen?: (a: AnalysisArtifact) => void }> = ({ artifact, onOpen }) => {
     const expired = !!artifact.expires_at && new Date(artifact.expires_at).getTime() < Date.now();
     const meta = [
-        artifact.tool === 'analyze_ip' ? 'IP 분석 전체 결과' : 'Payload 분석 전체 결과',
+        { analyze_ip: 'IP 분석 전체 결과', analyze_weblog: 'Payload 분석 전체 결과', create_report: '분석 보고서' }[artifact.tool],
         artifact.bytes != null ? formatFileSize(artifact.bytes) : null,
         expired ? '만료됨' : null,
     ].filter(Boolean).join(' · ');

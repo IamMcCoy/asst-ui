@@ -663,14 +663,18 @@ export const parseExtraInfo = (raw: unknown): ExtraInfo | null => {
         if (tool === 'text2seql' && typeof v?.seql === 'string' && v.seql.trim()) {
             (info.seql ??= []).push(v.seql);
         } else if ((tool === 'analyze_ip' || tool === 'analyze_weblog' || tool === 'create_report') && isHttpUrl(v?.download_url)) {
-            // download_url은 <a href>로 그대로 렌더되므로 http(s) 외 스킴(javascript:/data: 등)은 여기서 차단
-            (info.artifacts ??= []).push({
-                tool,
-                filename: v.filename ?? v.download_url.split('/').pop() ?? 'result',
-                bytes: v.bytes,
-                expires_at: v.expires_at,
-                download_url: v.download_url,
-            });
+            // download_url은 <a href>로 그대로 렌더되므로 http(s) 외 스킴(javascript:/data: 등)은 여기서 차단.
+            // create_report는 files[]에 포맷별(docx/pdf) 파일이 오므로 각각 카드로 만든다 (없으면 최상위 1개).
+            const files: any[] = Array.isArray(v.files) && v.files.length > 0 ? v.files.filter((f: any) => isHttpUrl(f?.download_url)) : [v];
+            for (const f of files) {
+                (info.artifacts ??= []).push({
+                    tool,
+                    filename: f.filename ?? f.download_url.split('/').pop() ?? 'result',
+                    bytes: f.bytes,
+                    expires_at: f.expires_at ?? v.expires_at,
+                    download_url: f.download_url,
+                });
+            }
         }
     }
     return Object.keys(info).length > 0 ? info : null;

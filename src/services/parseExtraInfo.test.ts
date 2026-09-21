@@ -33,3 +33,22 @@ test('download_url이 http(s)가 아니면 카드 생성 안 함', () => {
     expect(parseExtraInfo({ 'analyze_ip:c': { download_url: 'data:text/html,x' } })).toBeNull();
     expect(parseExtraInfo({ 'analyze_ip:c': { download_url: 'https://h/a.json' } })?.artifacts).toHaveLength(1);
 });
+
+test('create_report의 files[]는 포맷별로 각각 수집하고 만료 시각은 상위 값을 쓴다', () => {
+    const info = parseExtraInfo({
+        'create_report:c': {
+            filename: 'r.pdf',
+            expires_at: '2026-09-22T08:44:35Z',
+            download_url: 'http://h/scribe/v1/artifacts/01M/download?f=pdf',
+            files: [
+                { format: 'docx', filename: 'r.docx', bytes: 1, download_url: 'http://h/scribe/v1/artifacts/01M/download?f=docx' },
+                { format: 'pdf', filename: 'r.pdf', bytes: 2, download_url: 'http://h/scribe/v1/artifacts/01M/download?f=pdf' },
+                { format: 'x', filename: 'bad', download_url: 'javascript:alert(1)' },
+            ],
+        },
+    });
+    expect(info?.artifacts?.map((a) => [a.filename, a.expires_at])).toEqual([
+        ['r.docx', '2026-09-22T08:44:35Z'],
+        ['r.pdf', '2026-09-22T08:44:35Z'],
+    ]);
+});
